@@ -19,6 +19,7 @@ static PHImageRequestOptions *__ctImagePickerOptions;
         self.layer.cornerRadius = 2.f;
         self.clipsToBounds = YES;
         self.contentView.backgroundColor = [UIColor clearColor];
+        [self.contentView addSubview:self.imageView];
         [self.contentView addSubview:self.selectedButton];
 //        [self.contentView.layer addSublayer:self.selectedLayer];
         
@@ -150,26 +151,21 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     void(^didLoadImage)(UIImage *result) = ^(UIImage *result) {
         cell.imageView.image = result;
         [RGImagePickerCell needLoadWithAsset:asset result:^(BOOL needLoadWithAsset) {
-            if (!cell) {
-                return;
-            }
-            if (![cell->_asset.localIdentifier isEqualToString:asset.localIdentifier]) {
+            if (![cell.asset.localIdentifier isEqualToString:asset.localIdentifier]) {
                 return;
             }
             [CATransaction begin];
             [CATransaction setDisableActions:YES];
             if (needLoadWithAsset) {
-                cell->_selectedLayer.strokeEnd = 0.f;
+                cell.selectedLayer.strokeEnd = 0.f;
             } else {
-                cell->_selectedLayer.strokeEnd = 1.f;
+                cell.selectedLayer.strokeEnd = 1.f;
             }
             [CATransaction commit];
             
             if (needLoadWithAsset) {
-                cell->_selectedLayer.strokeEnd = 0.f;
                 cell.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
             } else {
-                cell->_selectedLayer.strokeEnd = 1.f;
                 cell.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.0];
             }
             
@@ -199,23 +195,10 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     
     asset.rgRequestId =
     [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:targetSize contentMode:PHImageContentModeAspectFill options:__ctImagePickerOptions resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
-        
+        asset.rgRequestId = 0;
         if (result) {
-            asset.rgRequestId = 0;
+            [cache addCachePhoto:result forAsset:asset];
         }
-        [cache addCachePhoto:result forAsset:asset];
-        
-        if (!cell) {
-            return;
-        }
-        
-        if (![cell->_asset.localIdentifier isEqualToString:asset.localIdentifier]) {
-            return;
-        }
-        if (!result) {
-            return;
-        }
-        
         didLoadImage(result);
     }];
     

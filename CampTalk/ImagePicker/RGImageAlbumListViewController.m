@@ -12,15 +12,6 @@
 
 @interface RGImageAlbumListViewController () <PHPhotoLibraryChangeObserver>
 
-@property (nonatomic, strong) PHAssetCollection *cameraCollections;
-@property (nonatomic, strong) PHFetchResult<PHAsset *> *cameraAssets;
-
-@property (nonatomic, strong) PHAssetCollection *favAssetCollections;
-@property (nonatomic, strong) PHFetchResult<PHAsset *> *favAssets;
-
-@property (nonatomic, strong) PHAssetCollection *aniAssetCollections;
-@property (nonatomic, strong) PHFetchResult<PHAsset *> *aniAssets;
-
 @property (nonatomic, strong) NSArray <PHAssetCollection *> *customCollections;
 @property (nonatomic, strong) NSArray <PHFetchResult<PHAsset *> *> *customAssets;
 
@@ -39,44 +30,62 @@
 }
 
 - (void)loadData {
-    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
-    PHFetchOptions *option = [[PHFetchOptions alloc] init];
-    option.predicate = predicate;
     
-    NSMutableArray <PHAssetCollection *> *customCollections = [NSMutableArray array];
-    NSMutableArray <PHFetchResult<PHAsset *> *> *customAssets = [NSMutableArray array];
-    
-    // 所有照片
-    _cameraCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumUserLibrary options:nil].lastObject;
-    _cameraAssets = [PHAsset fetchAssetsInAssetCollection:_cameraCollections options:option];
-    
-    [customCollections addObject:_cameraCollections];
-    [customAssets addObject:_cameraAssets];
-    
-    // 收藏
-    _favAssetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumFavorites options:nil].lastObject;
-    _favAssets = [PHAsset fetchAssetsInAssetCollection:_favAssetCollections options:option];
-    [customCollections addObject:_favAssetCollections];
-    [customAssets addObject:_favAssets];
-    
-    // 动图
-    if (@available(iOS 11.0, *)) {
-        _aniAssetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumAnimated options:nil].lastObject;
-        _aniAssets = [PHAsset fetchAssetsInAssetCollection:_aniAssetCollections options:option];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+        PHFetchOptions *option = [[PHFetchOptions alloc] init];
+        option.predicate = predicate;
         
-        [customCollections addObject:_aniAssetCollections];
-        [customAssets addObject:_aniAssets];
-    }
-    
-    self.customAssets = customAssets;
-    self.customCollections = customCollections;
-    
-    // 其他相册
-    _assetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
-    
-    if (self.isViewLoaded) {
-        [self.tableView reloadData];
-    }
+        NSMutableArray <PHAssetCollection *> *customCollections = [NSMutableArray array];
+        NSMutableArray <PHFetchResult<PHAsset *> *> *customAssets = [NSMutableArray array];
+        
+        // 所有照片
+        PHAssetCollection *collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumUserLibrary options:nil].lastObject;
+        PHFetchResult<PHAsset *> *asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
+        
+        if (collections && asset) {
+            [customCollections addObject:collections];
+            [customAssets addObject:asset];
+        }
+        
+        // 收藏
+        collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumFavorites options:nil].lastObject;
+        asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
+        
+        if (collections && asset) {
+            [customCollections addObject:collections];
+            [customAssets addObject:asset];
+        }
+        
+        // 动图
+        if (@available(iOS 11.0, *)) {
+            collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumAnimated options:nil].lastObject;
+            asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
+            
+            if (collections && asset) {
+                [customCollections addObject:collections];
+                [customAssets addObject:asset];
+            }
+        }
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.customAssets = customAssets;
+            self.customCollections = customCollections;
+            
+            // 其他相册
+            self.assetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
+            
+            if (self.isViewLoaded) {
+                [self.tableView reloadData];
+            } else {
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    if (!self.isViewLoaded) {
+                        [self.tableView reloadData];
+                    }
+                });
+            }
+        });
+    });
 }
 
 - (void)viewDidLoad {
@@ -87,6 +96,7 @@
     
     UIBarButtonItem *down = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(rg_dismiss)];
     self.navigationItem.rightBarButtonItem = down;
+    [self loadData];
 }
 
 - (void)dealloc {

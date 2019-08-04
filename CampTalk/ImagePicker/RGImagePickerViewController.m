@@ -165,8 +165,10 @@
     CGFloat recordHeight = self.collectionView.frame.size.height;
     _collectionView.frame = self.view.bounds;
     
-    [self __configItemSize];
-    [_collectionView reloadData];
+    if (recordHeight != self.view.bounds.size.height) {
+        [self __configItemSize];
+        [_collectionView reloadData];
+    }
     
     if (!_needScrollToBottom) {
         
@@ -204,17 +206,16 @@
 }
 
 - (void)__configTitle {
-    NSString *title = [NSString stringWithFormat:@"%@ (%lu/%lu)", _collection.localizedTitle, (unsigned long)self.cache.pickPhotos.count, (unsigned long)self.cache.maxCount];
-    self.navigationItem.title = title;
-    self.navigationItem.backBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:_collection.localizedTitle style:UIBarButtonItemStylePlain target:nil action:nil];
+    if (_collection) {
+        NSString *title = [NSString stringWithFormat:@"%@ (%lu/%lu)", _collection.localizedTitle, (unsigned long)self.cache.pickPhotos.count, (unsigned long)self.cache.maxCount];
+        self.navigationItem.title = title;
+        self.navigationItem.backBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:_collection.localizedTitle style:UIBarButtonItemStylePlain target:nil action:nil];
+    }
 }
 
 - (void)__scrollToBottomIfNeed {
     if (_needScrollToBottom && _assets) {
         [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.assets.count - 1 inSection:0] atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
-        [self.collectionView setNeedsLayout];
-        [self.collectionView layoutIfNeeded];
-        
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.assets.count - 1 inSection:0] atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
         });
@@ -247,17 +248,10 @@
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     RGImagePickerCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"RGImagePickerCell" forIndexPath:indexPath];
-    
-    if (_needScrollToBottom) {
-        return cell;
-    }
-    
-    PHAsset *photo = _assets[indexPath.row];
     cell.cache = self.cache;
-    [RGImagePickerCell setAsset:photo targetSize:_thumbSize updateCell:cell cache:self.cache];
     cell.delegate = self;
-    
-//    [_imageGallery addInteractionGestureShowImageGalleryAtIndex:indexPath.row fatherViewController:self fromView:cell imageView:cell.imageView];
+    PHAsset *photo = _assets[indexPath.row];
+    [RGImagePickerCell setAsset:photo targetSize:_thumbSize updateCell:cell cache:self.cache];
     
     if (_imageGallery.page == indexPath.row) {
         if (_imageGallery.isPush > noPush) {
@@ -308,8 +302,7 @@
     RGImagePickerCell *cell = (RGImagePickerCell *)[collectionView cellForItemAtIndexPath:indexPath];
     if (cell.lastTouchForce == 0) {
         PHAsset *photo = _assets[indexPath.row];
-        BOOL needLoad = !photo.rgIsLoaded;
-        if (needLoad) {
+        if (!photo.rgIsLoaded) {
             [RGImagePickerCell loadOriginalWithAsset:photo updateCell:cell];
             return NO;
         }

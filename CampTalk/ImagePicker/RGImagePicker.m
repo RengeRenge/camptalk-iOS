@@ -44,14 +44,16 @@
     RGImageAlbumListViewController *list = [[RGImageAlbumListViewController alloc] initWithStyle:UITableViewStylePlain];
     list.pickResult = pickResult;
     list.cache = cache;
-    list.title = @"相册";
     
     RGNavigationController *nvg = [RGNavigationController navigationWithRoot:list style:RGNavigationBackgroundStyleNormal];
-    //    UINavigationController *nvg = [[UINavigationController alloc] initWithRootViewController:list];
     [nvg setViewControllers:@[list, vc] animated:NO];
     nvg.modalPresentationStyle = UIModalPresentationOverCurrentContext;
     nvg.tintColor = [UIColor blackColor];
     [presentingViewController presentViewController:nvg animated:YES completion:nil];
+    
+    UIBarButtonItem *camera = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCamera target:nil action:nil];
+    list.navigationItem.backBarButtonItem = camera;
+    
     return vc;
 }
 
@@ -105,13 +107,9 @@
                 } completionHandler:^(NSError * _Nullable error) {
                     if (result) {
                         dispatch_async(dispatch_get_main_queue(), ^{
-                            if (error || !hasData) {
-                                result(YES);
-                                asset.rgIsLoaded = NO;
-                            } else {
-                                result(NO);
-                                asset.rgIsLoaded = YES;
-                            }
+                            BOOL needLoad = error || !hasData;
+                            asset.rgIsLoaded = !needLoad;
+                            result(needLoad);
                         });
                     }
                 }];
@@ -166,9 +164,9 @@
 + (void)loadResourceFromAsset:(PHAsset *)asset networkAccessAllowed:(BOOL)networkAccessAllowed progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable, NSError * _Nullable))completion {
     
     void(^callBackIfNeed)(NSData *data, NSError *error) = ^(NSData *data, NSError *error) {
-        if (completion && (data || error)) {
+        if (completion && (data.length || error)) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (data) {
+                if (networkAccessAllowed && data.length) {
                     asset.rgIsLoaded = YES;
                 }
                 completion(data, error);
