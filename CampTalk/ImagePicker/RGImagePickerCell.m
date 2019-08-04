@@ -149,9 +149,12 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     }
     
     void(^didLoadImage)(UIImage *result) = ^(UIImage *result) {
+        if (![cell isCurrentAsset:asset]) {
+            return;
+        }
         cell.imageView.image = result;
         [RGImagePickerCell needLoadWithAsset:asset result:^(BOOL needLoadWithAsset) {
-            if (![cell.asset.localIdentifier isEqualToString:asset.localIdentifier]) {
+            if (![cell isCurrentAsset:asset]) {
                 return;
             }
             [CATransaction begin];
