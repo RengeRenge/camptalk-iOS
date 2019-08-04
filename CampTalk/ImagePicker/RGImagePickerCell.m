@@ -18,7 +18,7 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     if (self = [super initWithFrame:frame]) {
         self.layer.cornerRadius = 2.f;
         self.clipsToBounds = YES;
-        self.contentView.backgroundColor = [UIColor blueColor];
+        self.contentView.backgroundColor = [UIColor clearColor];
         [self.contentView addSubview:self.selectedButton];
 //        [self.contentView.layer addSublayer:self.selectedLayer];
         
@@ -136,49 +136,56 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     return _imageViewMask;
 }
 
-- (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize {
-    if (_asset == asset || [self isCurrentAsset:asset]) {
++ (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize updateCell:(RGImagePickerCell *)cell cache:(RGImagePickerCache *)cache {
+    if (cell && (cell.asset == asset || [cell isCurrentAsset:asset])) {
         return;
     }
     
-    if (_asset && self.lastRequestId) {
-        [[PHCachingImageManager defaultManager] cancelImageRequest:self.lastRequestId];
+    if (asset.rgRequestId) {
+//        NSLog(@"PH Load And Cancel Id:[%d]", asset.rgRequestId);
+        [[PHCachingImageManager defaultManager] cancelImageRequest:asset.rgRequestId];
+        asset.rgRequestId = 0;
     }
     
     void(^didLoadImage)(UIImage *result) = ^(UIImage *result) {
+        cell.imageView.image = result;
         [RGImagePickerCell needLoadWithAsset:asset result:^(BOOL needLoadWithAsset) {
-            if (![self->_asset.localIdentifier isEqualToString:asset.localIdentifier]) {
+            if (!cell) {
+                return;
+            }
+            if (![cell->_asset.localIdentifier isEqualToString:asset.localIdentifier]) {
                 return;
             }
             [CATransaction begin];
             [CATransaction setDisableActions:YES];
             if (needLoadWithAsset) {
-                self->_selectedLayer.strokeEnd = 0.f;
+                cell->_selectedLayer.strokeEnd = 0.f;
             } else {
-                self->_selectedLayer.strokeEnd = 1.f;
+                cell->_selectedLayer.strokeEnd = 1.f;
             }
             [CATransaction commit];
             
             if (needLoadWithAsset) {
-                self->_selectedLayer.strokeEnd = 0.f;
-                self.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
+                cell->_selectedLayer.strokeEnd = 0.f;
+                cell.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
             } else {
-                self->_selectedLayer.strokeEnd = 1.f;
-                self.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.0];
+                cell->_selectedLayer.strokeEnd = 1.f;
+                cell.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.0];
             }
             
-            if (self.asset == asset) {
-                self.imageView.image = result;
-                [self.cache addCachePhoto:result forAsset:asset];
+            if (cell.asset == asset) {
+                if (cell.imageView.image != result) {
+                    cell.imageView.image = result;
+                }
             }
         }];
     };
     
     
-    _asset = asset;
-    UIImage *image = [self.cache imageForAsset:asset];
+    cell.asset = asset;
+    UIImage *image = [cache imageForAsset:asset];
     if (image) {
-        self.lastRequestId = 0;
+        asset.rgRequestId = 0;
         didLoadImage(image);
         return;
     }
@@ -187,13 +194,22 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     dispatch_once(&onceToken, ^{
         __ctImagePickerOptions = [[PHImageRequestOptions alloc] init];
         __ctImagePickerOptions.resizeMode = PHImageRequestOptionsResizeModeFast;
-        __ctImagePickerOptions.deliveryMode = PHImageRequestOptionsDeliveryModeOpportunistic;
+        __ctImagePickerOptions.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
     });
     
-    self.lastRequestId =
+    asset.rgRequestId =
     [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:targetSize contentMode:PHImageContentModeAspectFill options:__ctImagePickerOptions resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
         
-        if (![self->_asset.localIdentifier isEqualToString:asset.localIdentifier]) {
+        if (result) {
+            asset.rgRequestId = 0;
+        }
+        [cache addCachePhoto:result forAsset:asset];
+        
+        if (!cell) {
+            return;
+        }
+        
+        if (![cell->_asset.localIdentifier isEqualToString:asset.localIdentifier]) {
             return;
         }
         if (!result) {
@@ -201,8 +217,9 @@ static PHImageRequestOptions *__ctImagePickerOptions;
         }
         
         didLoadImage(result);
-        [self.cache addCachePhoto:result forAsset:asset];
     }];
+    
+//    NSLog(@"PH Load Id:[%d]", asset.rgRequestId);
 }
 
 - (BOOL)isCurrentAsset:(PHAsset *)asset {
@@ -210,32 +227,7 @@ static PHImageRequestOptions *__ctImagePickerOptions;
 }
 
 + (void)needLoadWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result {
-    if (asset.rgIsLoaded) {
-        if (result) {
-            result(NO);
-        }
-        return;
-    }
-    
-    PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
-    options.deliveryMode = PHImageRequestOptionsDeliveryModeOpportunistic;
-    options.networkAccessAllowed = NO;
-    options.synchronous = NO;
-    
-    CGSize orSize = CGSizeMake(asset.pixelWidth, asset.pixelHeight);
-    
-    __block BOOL needLoad = NO;
-    [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:orSize contentMode:PHImageContentModeAspectFill options:options resultHandler:^(UIImage * _Nullable image, NSDictionary * _Nullable info) {
-        BOOL isLoaded = ![info[PHImageResultIsDegradedKey] boolValue] && image;
-        needLoad = !isLoaded;
-        if (image) {
-//            [self.cache addCachePhoto:image forAsset:asset];
-        }
-        asset.rgIsLoaded = isLoaded;
-        if (result) {
-            result(needLoad);
-        }
-    }];
+    [RGImagePicker needLoadWithAsset:asset result:result];
 }
 
 + (void)loadOriginalWithAsset:(PHAsset *)asset updateCell:(nonnull RGImagePickerCell *)cell {

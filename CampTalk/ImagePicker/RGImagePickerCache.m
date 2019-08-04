@@ -12,11 +12,19 @@
 @implementation PHAsset (RGLoaded)
 
 - (void)setRgIsLoaded:(BOOL)rgIsLoaded {
-    [self rg_setValue:@(rgIsLoaded) forKey:@"RGLoaded" retain:YES];
+    [self rg_setValue:@(rgIsLoaded) forKey:@"rgIsLoaded" retain:YES];
 }
 
 - (BOOL)rgIsLoaded {
-    return [[self rg_valueForKey:@"RGLoaded"] boolValue];
+    return [[self rg_valueForKey:@"rgIsLoaded"] boolValue];
+}
+
+- (void)setRgRequestId:(PHImageRequestID)rgRequestId {
+    [self rg_setValue:@(rgRequestId) forKey:@"rgRequestId" retain:YES];
+}
+
+- (PHImageRequestID)rgRequestId {
+    return [[self rg_valueForKey:@"rgRequestId"] intValue];
 }
 
 @end
@@ -38,6 +46,9 @@
 }
 
 - (void)addCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset {
+    if (!photo) {
+        return;
+    }
     NSUInteger index = [self indexForCacheAsset:asset];
     if (index != NSNotFound) {
         UIImage *image = self.cachePhotos[index].allValues.firstObject;

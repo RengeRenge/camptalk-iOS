@@ -27,7 +27,7 @@
 
 #import "Bluuur.h"
 
-@interface RGImagePickerViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PHPhotoLibraryChangeObserver, RGImagePickerCellDelegate, ImageGalleryDelegate>
+@interface RGImagePickerViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PHPhotoLibraryChangeObserver, UICollectionViewDataSourcePrefetching, RGImagePickerCellDelegate, ImageGalleryDelegate>
 
 @property (nonatomic, assign) BOOL needScrollToBottom;
 @property (nonatomic, strong) PHFetchResult<PHAsset *> *assets;
@@ -75,8 +75,38 @@
     
     _imageGallery = [[ImageGallery alloc] initWithPlaceHolder:[UIImage rg_imageWithName:@"sad"] andDelegate:self];
     
-    [self.view addSubview:self.toolBar];
+    self.toolBar.translatesAutoresizingMaskIntoConstraints = NO;
     self.toolBar.items = [self __toolBarItemForGallery:NO];
+    [self.view addSubview:self.toolBar];
+    
+    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.view
+                                                          attribute:NSLayoutAttributeLeading
+                                                          relatedBy:NSLayoutRelationEqual
+                                                             toItem:self.toolBar
+                                                          attribute:NSLayoutAttributeLeading
+                                                         multiplier:1
+                                                           constant:0]];
+
+    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.view
+                                                          attribute:NSLayoutAttributeTrailing
+                                                          relatedBy:NSLayoutRelationEqual
+                                                             toItem:self.toolBar
+                                                          attribute:NSLayoutAttributeTrailing
+                                                         multiplier:1
+                                                           constant:0]];
+    
+    [self.toolBar updateConstraints];
+    if (@available(iOS 11.0, *)) {;
+        [self.toolBar.lastBaselineAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor].active = YES;
+    } else {
+        [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.toolBar
+                                                              attribute:NSLayoutAttributeBottom
+                                                              relatedBy:NSLayoutRelationEqual
+                                                                 toItem:self.view
+                                                              attribute:NSLayoutAttributeBottom
+                                                             multiplier:1
+                                                               constant:0]];
+    }
 }
 
 - (UICollectionView *)collectionView {
@@ -85,10 +115,12 @@
         layout.minimumInteritemSpacing = 0.f;
         layout.minimumLineSpacing = 2.f;
         _collectionView = [[UICollectionView alloc] initWithFrame:self.view.bounds collectionViewLayout:layout];
-        _collectionView.contentInset = UIEdgeInsetsMake(0, 0, 44, 0);
         [self __configItemSize];
         _collectionView.delegate = self;
         _collectionView.dataSource = self;
+        if (@available(iOS 10.0, *)) {
+            _collectionView.prefetchDataSource = self;
+        }
     }
     return _collectionView;
 }
@@ -120,8 +152,15 @@
     [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    _collectionView.contentInset = UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0);
+}
+
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
+    
+    _collectionView.contentInset = UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0);
     
     CGFloat recordHeight = self.collectionView.frame.size.height;
     _collectionView.frame = self.view.bounds;
@@ -149,7 +188,6 @@
             });
         }
     }
-    self.toolBar.frame = CGRectMake(0, CGRectGetHeight(self.view.bounds) - 44, self.view.bounds.size.width, 44);
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -174,6 +212,9 @@
 - (void)__scrollToBottomIfNeed {
     if (_needScrollToBottom && _assets) {
         [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.assets.count - 1 inSection:0] atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+        
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.assets.count - 1 inSection:0] atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
         });
@@ -206,10 +247,17 @@
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     RGImagePickerCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"RGImagePickerCell" forIndexPath:indexPath];
+    
+    if (_needScrollToBottom) {
+        return cell;
+    }
+    
     PHAsset *photo = _assets[indexPath.row];
     cell.cache = self.cache;
-    [cell setAsset:photo targetSize:_thumbSize];
+    [RGImagePickerCell setAsset:photo targetSize:_thumbSize updateCell:cell cache:self.cache];
     cell.delegate = self;
+    
+//    [_imageGallery addInteractionGestureShowImageGalleryAtIndex:indexPath.row fatherViewController:self fromView:cell imageView:cell.imageView];
     
     if (_imageGallery.page == indexPath.row) {
         if (_imageGallery.isPush > noPush) {
@@ -404,6 +452,24 @@
     return array;
 }
 
+#pragma mark - UICollectionViewDataSourcePrefetching
+
+- (void)collectionView:(UICollectionView *)collectionView prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
+    for (NSIndexPath *indexPath in indexPaths) {
+        [RGImagePickerCell setAsset:_assets[indexPath.row] targetSize:self.thumbSize updateCell:nil cache:self.cache];
+    }
+}
+
+- (void)collectionView:(UICollectionView *)collectionView cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
+    for (NSIndexPath *indexPath in indexPaths) {
+        PHImageRequestID rgRequestId = _assets[indexPath.row].rgRequestId;
+//        NSLog(@"PH Cancel Id:[%d]", rgRequestId);
+        if (rgRequestId) {
+            [[PHCachingImageManager defaultManager] cancelImageRequest:rgRequestId];
+        }
+    }
+}
+
 #pragma mark - PHPhotoLibraryChangeObserver
 
 - (void)photoLibraryDidChange:(PHChange *)changeInstance {
@@ -513,7 +579,7 @@
 }
 
 - (UIImage *)backgroundImageForImageGalleryBar:(ImageGallery *)imageGallery {
-    return self.navigationController.navigationBar.backIndicatorImage;
+    return nil;
 }
 
 - (UIImage *)backgroundImageForParentViewControllerBar {

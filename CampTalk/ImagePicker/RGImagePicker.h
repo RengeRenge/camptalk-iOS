@@ -18,6 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (RGImagePickerViewController *)presentByViewController:(UIViewController *)presentingViewController maxCount:(NSUInteger)maxCount pickResult:(RGImagePickResult)pickResult;
 
++ (void)needLoadWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result;
+
 + (void)loadResourceFromAsset:(PHAsset *)asset progressHandler:(void(^_Nullable)(double progress))progressHandler completion:(void (^_Nullable)(NSData *_Nullable imageData, NSError *_Nullable error))completion;
 
 + (void)loadResourceFromAssets:(NSArray <PHAsset *> *)assets completion:(void(^)(NSArray <NSData *> *imageData, NSError *_Nullable error))completion;

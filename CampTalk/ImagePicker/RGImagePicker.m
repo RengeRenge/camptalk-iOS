@@ -55,6 +55,76 @@
     return vc;
 }
 
++ (void)needLoadWithAsset:(PHAsset *)asset result:(void (^)(BOOL))result {
+    if (asset.rgIsLoaded) {
+        if (result) {
+            result(NO);
+        }
+        return;
+    }
+    
+    void(^oldMethod)(void) = ^{
+        PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
+        options.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+        options.networkAccessAllowed = NO;
+        options.synchronous = NO;
+        
+        CGSize orSize = CGSizeMake(asset.pixelWidth, asset.pixelHeight);
+        
+        __block BOOL needLoad = NO;
+        [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:orSize contentMode:PHImageContentModeAspectFill options:options resultHandler:^(UIImage * _Nullable image, NSDictionary * _Nullable info) {
+            BOOL isLoaded = ![info[PHImageResultIsDegradedKey] boolValue] && image;
+            needLoad = !isLoaded;
+            asset.rgIsLoaded = isLoaded;
+            if (result) {
+                result(needLoad);
+            }
+        }];
+    };
+    
+    if (@available(iOS 9.0, *)) {
+        if (asset.mediaSubtypes != 32) {
+            oldMethod();
+            return;
+        }
+        
+        NSArray<PHAssetResource *> * resources = [PHAssetResource assetResourcesForAsset:asset];
+        for (NSInteger i = resources.count - 1; i >= 0; i--) {
+            PHAssetResource *obj = resources[i];
+            if (![self isPhoto:obj]) {
+                continue;
+            }
+            
+            if ([self isGIF:obj]) {
+                PHAssetResourceRequestOptions *option = [[PHAssetResourceRequestOptions alloc] init];
+                option.networkAccessAllowed = NO;
+                
+                __block BOOL hasData = NO;
+                [[PHAssetResourceManager defaultManager] requestDataForAssetResource:obj options:option dataReceivedHandler:^(NSData * _Nonnull data) {
+                    hasData |= data.length > 0;
+                } completionHandler:^(NSError * _Nullable error) {
+                    if (result) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            if (error || !hasData) {
+                                result(YES);
+                                asset.rgIsLoaded = NO;
+                            } else {
+                                result(NO);
+                                asset.rgIsLoaded = YES;
+                            }
+                        });
+                    }
+                }];
+            } else {
+                oldMethod();
+            }
+            break;
+        }
+    } else {
+        oldMethod();
+    }
+}
+
 + (void)loadResourceFromAssets:(NSArray<PHAsset *> *)assets completion:(nonnull void (^)(NSArray<NSData *> * _Nonnull, NSError * _Nullable))completion {
     if (assets.count == 0) {
         if (completion) {
@@ -89,7 +159,11 @@
     }];
 }
 
-+ (void)loadResourceFromAsset:(PHAsset *)asset progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable, NSError * _Nullable))completion {
++ (void)loadResourceFromAsset:(PHAsset *)asset progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable data, NSError * _Nullable error))completion {
+    [self loadResourceFromAsset:asset networkAccessAllowed:YES progressHandler:progressHandler completion:completion];
+}
+
++ (void)loadResourceFromAsset:(PHAsset *)asset networkAccessAllowed:(BOOL)networkAccessAllowed progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable, NSError * _Nullable))completion {
     
     void(^callBackIfNeed)(NSData *data, NSError *error) = ^(NSData *data, NSError *error) {
         if (completion && (data || error)) {
@@ -111,7 +185,7 @@
             }
             
             PHAssetResourceRequestOptions *option = [[PHAssetResourceRequestOptions alloc] init];
-            option.networkAccessAllowed = YES;
+            option.networkAccessAllowed = networkAccessAllowed;
             
             option.progressHandler = ^(double progress) {
                 if (progressHandler) {
@@ -132,7 +206,7 @@
     } else {
         PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
         options.synchronous = NO;
-        options.networkAccessAllowed = YES;
+        options.networkAccessAllowed = networkAccessAllowed;
         options.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
         options.progressHandler = ^(double progress, NSError * _Nullable error, BOOL * _Nonnull stop, NSDictionary * _Nullable info) {
             if (progressHandler) {

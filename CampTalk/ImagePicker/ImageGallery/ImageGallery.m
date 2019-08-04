@@ -93,7 +93,8 @@
 @property (nonatomic, strong) UILabel        *titleLabel;
 
 @property (nonatomic, strong) UIToolbar       *toolbar;
-@property (nonatomic, assign) BOOL toolbarIsHide;
+
+@property (nonatomic, assign) CGSize lastSize;
 
 @property (nonatomic, strong) NSMutableArray  *playButtonArr;
 
@@ -125,7 +126,6 @@
         self.barBackgroundImage = nil;
         self.page           =   0;
         self.isPush         =   noPush;
-        [self initImageScrollViewArr];
     }
     return self;
 }
@@ -167,11 +167,47 @@ enum{
 - (void)viewDidLoad{
     [super viewDidLoad];
     [self.view setBackgroundColor:[UIColor clearColor]];
+    [self initImageScrollViewArr];
     [self setBackItem];
-    [self configToolBar];
     [self.view addSubview:self.BgScrollView];
     _hideTopBar = NO;
     _hideToolBar = NO;
+
+    self.toolbar.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.toolbar];
+    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.view
+                                                          attribute:NSLayoutAttributeLeading
+                                                          relatedBy:NSLayoutRelationEqual
+                                                             toItem:self.toolbar
+                                                          attribute:NSLayoutAttributeLeading
+                                                         multiplier:1
+                                                           constant:0]];
+    
+    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.view
+                                                          attribute:NSLayoutAttributeTrailing
+                                                          relatedBy:NSLayoutRelationEqual
+                                                             toItem:self.toolbar
+                                                          attribute:NSLayoutAttributeTrailing
+                                                         multiplier:1
+                                                           constant:0]];
+    
+    if (@available(iOS 11.0, *)) {;
+        [self.toolbar.lastBaselineAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor].active = YES;
+    } else {
+        [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.toolbar
+                                                              attribute:NSLayoutAttributeBottom
+                                                              relatedBy:NSLayoutRelationEqual
+                                                                 toItem:self.view
+                                                              attribute:NSLayoutAttributeBottom
+                                                             multiplier:1
+                                                               constant:0]];
+    }
+    
+    [self.view setNeedsLayout];
+    [self.view layoutIfNeeded];
+    
+    //Load Visiable Image
+    [self setMiddleImageViewForPushWithScale:YES];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -183,6 +219,15 @@ enum{
     [self hide:self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
 }
 
+- (UIToolbar *)toolbar {
+    if (!_toolbar) {
+        _toolbar = [[UIToolbar alloc] init];
+        _toolbar.barStyle = UIBarStyleDefault;
+        _toolbar.alpha = 0.0f;
+    }
+    return _toolbar;
+}
+
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     self.isPush = noPush;
@@ -190,8 +235,11 @@ enum{
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    self.view.frame = [UIScreen mainScreen].bounds;
-    [self configToolBar];
+    if (CGSizeEqualToSize(_lastSize, self.view.bounds.size)) {
+        return;
+    }
+    _lastSize = self.view.bounds.size;
+    
     [self.BgScrollView setDelegate:nil];
     // Update ContentSize
     [self getCountWithSetContentSize:YES];
@@ -372,6 +420,9 @@ enum{
 }
 
 - (void)setMiddleImageViewForPushWithScale:(BOOL)scale {
+    if (!self.isViewLoaded) {
+        return;
+    }
     UIImageView *imageView = self.imageViewArr[middle];
     imageView.image = [self getPushImage];
     
@@ -435,32 +486,6 @@ enum{
     }
 }
 
-- (void)configToolBar {
-    if (_toolbar == nil) {
-        _toolbar = [[UIToolbar alloc] init];
-        _toolbar.barStyle = UIBarStyleDefault;
-//        UIBarButtonItem *leftFix = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
-//        UIBarButtonItem *rightFix = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
-//        UIBarButtonItem *fix = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-//        UIBarButtonItem *fix2 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-//
-//        UIBarButtonItem *play = [[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemPlay target:self action:@selector(playItem)];
-//        play.enabled = NO;
-//        play.tintColor = [UIColor clearColor];
-//
-//        UIBarButtonItem *delete = [[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(deleteItem)];
-//        UIBarButtonItem *share = [[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(shareItem)];
-//        [_toolbar setItems:@[leftFix, share, fix, play, fix2, delete, rightFix] animated:YES];
-        _toolbar.alpha = 0.0f;
-    }
-    if ([self isViewLoaded]) {
-        if (_toolbar.superview != self.view) {
-            [self.view addSubview:_toolbar];
-        }
-    }
-    [_toolbar setFrame:CGRectMake(0, kScreenHeight - 44, kScreenWidth, 44)];
-}
-
 - (void)configToolBarItem {
     BOOL display = NO;
     if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:toolBarItemsShouldDisplayForIndex:)]) {
@@ -468,10 +493,10 @@ enum{
         display = [self.delegate imageGallery:self toolBarItemsShouldDisplayForIndex:_page];
         
         if (display && self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:toolBarItemsForIndex:)]) {
-            _toolbar.items = [self.delegate imageGallery:self toolBarItemsForIndex:_page];
+            self.toolbar.items = [self.delegate imageGallery:self toolBarItemsForIndex:_page];
         }
     }
-    _toolbar.hidden = !display;
+    self.toolbar.hidden = !display;
 }
 
 - (NSInteger)getCountWithSetContentSize:(BOOL)setSize {
@@ -659,9 +684,6 @@ enum{
     _hideToolBar = NO;
     self.isPush =   pushing;
     
-    //Load Visiable Image
-    [self setMiddleImageViewForPushWithScale:YES];
-    
     //Show ImageGallery ViewController
     [self pushSelfByFatherViewController:interactionController.fromVC];
 }
@@ -678,17 +700,14 @@ enum{
 }
 
 - (void)hide:(BOOL)hide toolbarWithAnimateDuration:(NSTimeInterval)duration {
-    self.toolbarIsHide = hide;
-    [self.view bringSubviewToFront:self->_toolbar];
+    [self.view bringSubviewToFront:self.toolbar];
     CGFloat alpha = hide ? 0.0f : 1.0f;
     if (duration > 0) {
         [UIView animateWithDuration:duration animations:^{
-            if (self->_toolbar) {
-                self->_toolbar.alpha = alpha;
-            }
+            self->_toolbar.alpha = alpha;
         }];
     } else {
-        _toolbar.alpha = alpha;
+        self.toolbar.alpha = alpha;
     }
 }
 
@@ -749,7 +768,6 @@ enum{
     
     //setTranslucent For origin.y at 0.0f
     [self setNavigationBarAndTabBarForImageGallery:YES];
-    [self configToolBar];
     [viewController.navigationController pushViewController:self animated:YES];
 }
 
@@ -1549,15 +1567,15 @@ enum{
 }
 
 - (void)addkeyFrameAnimationForBackgroundColorInPushToVC:(ImageGallery *)toVC duration:(NSTimeInterval)duration {
-    [toVC.view setBackgroundColor:[UIColor colorWithRed:1 green:1 blue:1 alpha:0]];
+    [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
     [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
-        [toVC.view setBackgroundColor:[UIColor colorWithRed:1 green:1 blue:1 alpha:1]];
+        [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:1]];
     }];
 }
 
 - (void)addkeyFrameAnimationForBackgroundColorInPopWithFakeBackground:(UIView *)toView duration:(NSTimeInterval)duration {
     [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
-        [toView setBackgroundColor:[UIColor colorWithRed:1 green:1 blue:1 alpha:0]];
+        [toView setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
     }];
 }
 

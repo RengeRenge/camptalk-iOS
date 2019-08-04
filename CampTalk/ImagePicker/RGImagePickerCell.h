@@ -39,7 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak) id <RGImagePickerCellDelegate> delegate;
 @property (nonatomic, assign) CGFloat lastTouchForce;
 
-- (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize;
++ (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize updateCell:(RGImagePickerCell *_Nullable)cell cache:(RGImagePickerCache *_Nullable)cache;
 + (void)needLoadWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result;
 
 - (BOOL)isCurrentAsset:(PHAsset *)asset;

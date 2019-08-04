@@ -18,6 +18,12 @@
 @property (nonatomic, strong) PHAssetCollection *favAssetCollections;
 @property (nonatomic, strong) PHFetchResult<PHAsset *> *favAssets;
 
+@property (nonatomic, strong) PHAssetCollection *aniAssetCollections;
+@property (nonatomic, strong) PHFetchResult<PHAsset *> *aniAssets;
+
+@property (nonatomic, strong) NSArray <PHAssetCollection *> *customCollections;
+@property (nonatomic, strong) NSArray <PHFetchResult<PHAsset *> *> *customAssets;
+
 @property (nonatomic, strong) PHFetchResult<PHAssetCollection *> *assetCollections;
 
 @end
@@ -37,13 +43,33 @@
     PHFetchOptions *option = [[PHFetchOptions alloc] init];
     option.predicate = predicate;
     
+    NSMutableArray <PHAssetCollection *> *customCollections = [NSMutableArray array];
+    NSMutableArray <PHFetchResult<PHAsset *> *> *customAssets = [NSMutableArray array];
+    
     // 所有照片
     _cameraCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumUserLibrary options:nil].lastObject;
     _cameraAssets = [PHAsset fetchAssetsInAssetCollection:_cameraCollections options:option];
     
+    [customCollections addObject:_cameraCollections];
+    [customAssets addObject:_cameraAssets];
+    
     // 收藏
     _favAssetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumFavorites options:nil].lastObject;
     _favAssets = [PHAsset fetchAssetsInAssetCollection:_favAssetCollections options:option];
+    [customCollections addObject:_favAssetCollections];
+    [customAssets addObject:_favAssets];
+    
+    // 动图
+    if (@available(iOS 11.0, *)) {
+        _aniAssetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumAnimated options:nil].lastObject;
+        _aniAssets = [PHAsset fetchAssetsInAssetCollection:_aniAssetCollections options:option];
+        
+        [customCollections addObject:_aniAssetCollections];
+        [customAssets addObject:_aniAssets];
+    }
+    
+    self.customAssets = customAssets;
+    self.customCollections = customCollections;
     
     // 其他相册
     _assetCollections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
@@ -68,17 +94,14 @@
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 2 + _assetCollections.count;
+    return self.customCollections.count + _assetCollections.count;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) {
-        return _cameraAssets.count > 0 ? 1 : 0;
+    if (section < self.customAssets.count) {
+        return self.customAssets[section].count > 0 ? 1 : 0;
     }
-    if (section == 1) {
-        return _favAssets.count > 0 ? 1 : 0;
-    }
-    return [PHAsset fetchAssetsInAssetCollection:_assetCollections[section - 2] options:nil].count > 0 ? 1 : 0;
+    return [PHAsset fetchAssetsInAssetCollection:_assetCollections[section - self.customAssets.count] options:nil].count > 0 ? 1 : 0;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -86,24 +109,20 @@
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     
     PHAsset *asset;
-    if (indexPath.section == 0) {
-        asset = _cameraAssets.lastObject;
-        cell.textLabel.text = _cameraCollections.localizedTitle;
-        cell.detailTextLabel.text = @(_cameraAssets.count).stringValue;
-    } else if (indexPath.section == 1) {
-        asset = _favAssets.lastObject;
-        cell.textLabel.text = _favAssetCollections.localizedTitle;
-        cell.detailTextLabel.text = @(_favAssets.count).stringValue;
+    if (indexPath.section < self.customCollections.count) {
+        asset = self.customAssets[indexPath.section].lastObject;
+        cell.textLabel.text = self.customCollections[indexPath.section].localizedTitle;
+        cell.detailTextLabel.text = @(self.customAssets[indexPath.section].count).stringValue;
     } else {
         
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
         PHFetchOptions *option = [[PHFetchOptions alloc] init];
         option.predicate = predicate;
         
-        PHFetchResult<PHAsset *> *result = [PHAsset fetchAssetsInAssetCollection:_assetCollections[indexPath.section - 2] options:option];
+        PHFetchResult<PHAsset *> *result = [PHAsset fetchAssetsInAssetCollection:_assetCollections[indexPath.section - self.customCollections.count] options:option];
         asset = result.lastObject;
         
-        cell.textLabel.text = _assetCollections[indexPath.section - 2].localizedTitle;
+        cell.textLabel.text = _assetCollections[indexPath.section - self.customCollections.count].localizedTitle;
         cell.detailTextLabel.text = @(result.count).stringValue;
     }
     
@@ -116,12 +135,10 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     PHAssetCollection *collection = nil;
-    if (indexPath.section == 0) {
-        collection = _cameraCollections;
-    } else if (indexPath.section == 1) {
-        collection = _favAssetCollections;
+    if (indexPath.section < self.customCollections.count) {
+        collection = self.customCollections[indexPath.section];
     } else {
-        collection = _assetCollections[indexPath.section - 2];
+        collection = _assetCollections[indexPath.section - self.customCollections.count];
     }
     RGImagePickerViewController *albumDetails = [[RGImagePickerViewController alloc] init];
     albumDetails.collection = collection;

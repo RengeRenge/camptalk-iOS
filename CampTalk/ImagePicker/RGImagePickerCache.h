@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PHAsset (RGLoaded)
 
 @property (nonatomic, assign) BOOL rgIsLoaded;
+@property (nonatomic, assign) PHImageRequestID rgRequestId;
 
 @end
 
