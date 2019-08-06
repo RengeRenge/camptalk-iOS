@@ -12,11 +12,16 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+extern NSNotificationName RGPHAssetLoadStatusHasChanged;
+
 @class RGImageAlbumListViewController;
 
 @interface PHAsset (RGLoaded)
 
+@property (nonatomic, assign) CGFloat rgLoadLargeImageProgress;
+
 @property (nonatomic, assign) BOOL rgIsLoaded;
+
 @property (nonatomic, assign) PHImageRequestID rgRequestId;
 
 @end
@@ -33,7 +38,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)addCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset;
 - (void)removeCachePhotoForAsset:(NSArray <PHAsset *> *)assets;
-- (UIImage * _Nullable)imageForAsset:(PHAsset *)asset;
+
+//- (UIImage * _Nullable)imageForAsset:(PHAsset *)asset;
+
+- (UIImage *_Nullable)imageForAsset:(PHAsset *)asset
+                          onlyCache:(BOOL)onlyCache
+                           syncLoad:(BOOL)syncLoad
+                           allowNet:(BOOL)allowNet
+                         targetSize:(CGSize)targetSize
+                         completion:(void(^_Nullable)(UIImage *image))completion;
 
 //- (void)addCacheLoadedStatusForAsset:(PHAsset *)asset;
 //- (BOOL)isLoadedStatusForAsset:(PHAsset *)asset;

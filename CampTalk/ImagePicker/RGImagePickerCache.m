@@ -9,9 +9,23 @@
 #import "RGImagePickerCache.h"
 #import <RGUIKit/RGUIKit.h>
 
+NSNotificationName RGPHAssetLoadStatusHasChanged = @"RGPHAssetLoadStatusHasChanged";
+
 @implementation PHAsset (RGLoaded)
 
+- (void)setRgLoadLargeImageProgress:(CGFloat)rgLoadLargeImageProgress {
+    [self rg_setValue:@(rgLoadLargeImageProgress) forKey:@"rgLoadLargeImageProgress" retain:YES];
+}
+
+- (CGFloat)rgLoadLargeImageProgress {
+    return [[self rg_valueForKey:@"rgLoadLargeImageProgress"] floatValue];
+}
+
 - (void)setRgIsLoaded:(BOOL)rgIsLoaded {
+    if (self.rgIsLoaded == rgIsLoaded) {
+        return;
+    }
+//    [[NSNotificationCenter defaultCenter] postNotificationName:RGPHAssetLoadStatusHasChanged object:self];
     [self rg_setValue:@(rgIsLoaded) forKey:@"rgIsLoaded" retain:YES];
 }
 
@@ -83,12 +97,51 @@
     return NSNotFound;
 }
 
-- (UIImage *)imageForAsset:(PHAsset *)asset {
+- (UIImage *)imageForAsset:(PHAsset *)asset
+                 onlyCache:(BOOL)onlyCache
+                  syncLoad:(BOOL)syncLoad
+                  allowNet:(BOOL)allowNet
+                targetSize:(CGSize)targetSize
+                completion:(void(^)(UIImage *image))completion {
+    
+    __block UIImage *image = nil;
+    
     NSUInteger index = [self indexForCacheAsset:asset];
     if (index != NSNotFound) {
-        return self.cachePhotos[index].allValues.firstObject;
+        image = self.cachePhotos[index].allValues.firstObject;
+        if (completion) {
+            completion(image);
+        }
+        return image;
     }
-    return nil;
+    
+    if (onlyCache) {
+        return image;
+    }
+    
+    if (asset.rgRequestId) {
+//        NSLog(@"PH Load And Cancel Id:[%d]", asset.rgRequestId);
+        [[PHCachingImageManager defaultManager] cancelImageRequest:asset.rgRequestId];
+        asset.rgRequestId = 0;
+    }
+    
+    PHImageRequestOptions *op = [[PHImageRequestOptions alloc] init];
+    op.resizeMode = PHImageRequestOptionsResizeModeFast;
+    op.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+    op.synchronous = syncLoad;
+    op.networkAccessAllowed = allowNet;
+    
+    [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:targetSize contentMode:PHImageContentModeAspectFill options:op resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
+        
+        asset.rgRequestId = 0;
+        
+        image = result;
+        [self addCachePhoto:result forAsset:asset];
+        if (completion) {
+            completion(image);
+        }
+    }];
+    return image;
 }
 
 - (void)setPhotos:(NSArray<PHAsset *> *)phassets {

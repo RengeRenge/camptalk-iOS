@@ -39,34 +39,36 @@
         NSMutableArray <PHAssetCollection *> *customCollections = [NSMutableArray array];
         NSMutableArray <PHFetchResult<PHAsset *> *> *customAssets = [NSMutableArray array];
         
-        // 所有照片
-        PHAssetCollection *collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumUserLibrary options:nil].lastObject;
-        PHFetchResult<PHAsset *> *asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
-        
-        if (collections && asset) {
-            [customCollections addObject:collections];
-            [customAssets addObject:asset];
-        }
-        
-        // 收藏
-        collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumFavorites options:nil].lastObject;
-        asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
-        
-        if (collections && asset) {
-            [customCollections addObject:collections];
-            [customAssets addObject:asset];
-        }
-        
-        // 动图
-        if (@available(iOS 11.0, *)) {
-            collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumAnimated options:nil].lastObject;
-            asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
+        void(^customCollection)(PHAssetCollectionSubtype type) = ^(PHAssetCollectionSubtype type) {
+            PHAssetCollection *collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:type options:nil].lastObject;
+            PHFetchResult<PHAsset *> *asset = [PHAsset fetchAssetsInAssetCollection:collections options:option];
             
             if (collections && asset) {
                 [customCollections addObject:collections];
                 [customAssets addObject:asset];
             }
+        };
+        
+        // 所有照片
+        customCollection(PHAssetCollectionSubtypeSmartAlbumUserLibrary);
+        // 收藏
+        customCollection(PHAssetCollectionSubtypeSmartAlbumFavorites);
+        customCollection(PHAssetCollectionSubtypeSmartAlbumTimelapses);
+        customCollection(PHAssetCollectionSubtypeSmartAlbumRecentlyAdded);
+        if (@available(iOS 9.0, *)) {
+            customCollection(PHAssetCollectionSubtypeSmartAlbumSelfPortraits);
         }
+        if (@available(iOS 9.0, *)) {
+            customCollection(PHAssetCollectionSubtypeSmartAlbumScreenshots);
+        }
+        if (@available(iOS 10.2, *)) {
+            customCollection(PHAssetCollectionSubtypeSmartAlbumDepthEffect);
+        }
+        // 动图
+        if (@available(iOS 11.0, *)) {
+            customCollection(PHAssetCollectionSubtypeSmartAlbumAnimated);
+        }
+        
         
         dispatch_async(dispatch_get_main_queue(), ^{
             self.customAssets = customAssets;
@@ -91,8 +93,9 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.tableView.tableFooterView = [UIView new];
-    
-    [self.tableView registerClass:RGTableViewCell.class forCellReuseIdentifier:RGCellIDValue1];
+    self.tableView.rowHeight = 44;
+    self.tableView.estimatedRowHeight = 0;
+    [self.tableView registerClass:RGIconCell.class forCellReuseIdentifier:RGCellIDValue1];
     
     UIBarButtonItem *down = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(rg_dismiss)];
     self.navigationItem.rightBarButtonItem = down;
@@ -115,7 +118,8 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:RGCellIDValue1 forIndexPath:indexPath];
+    RGIconCell *cell = [tableView dequeueReusableCellWithIdentifier:RGCellIDValue1 forIndexPath:indexPath];
+    cell.iconSize = CGSizeMake(tableView.rowHeight, tableView.rowHeight);
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     
     PHAsset *asset;
@@ -136,9 +140,8 @@
         cell.detailTextLabel.text = @(result.count).stringValue;
     }
     
-    [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:CGSizeMake(40, 40) contentMode:PHImageContentModeAspectFill options:0 resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
+    [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:CGSizeMake(tableView.rowHeight, tableView.rowHeight) contentMode:PHImageContentModeAspectFill options:0 resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
         cell.imageView.image = result;
-        [cell setNeedsLayout];
     }];
     return cell;
 }

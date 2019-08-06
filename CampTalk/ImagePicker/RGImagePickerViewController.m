@@ -14,7 +14,7 @@
 #import <Photos/Photos.h>
 #import <CoreLocation/CoreLocation.h>
 
-#import "ImageGallery.h"
+#import "RGImageGallery.h"
 
 #import "RGImagePickerConst.h"
 #import "RGImagePickerCache.h"
@@ -27,7 +27,7 @@
 
 #import "Bluuur.h"
 
-@interface RGImagePickerViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PHPhotoLibraryChangeObserver, UICollectionViewDataSourcePrefetching, RGImagePickerCellDelegate, ImageGalleryDelegate>
+@interface RGImagePickerViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PHPhotoLibraryChangeObserver, UICollectionViewDataSourcePrefetching, RGImagePickerCellDelegate, RGImageGalleryDelegate>
 
 @property (nonatomic, assign) BOOL needScrollToBottom;
 @property (nonatomic, strong) PHFetchResult<PHAsset *> *assets;
@@ -38,12 +38,15 @@
 
 @property (nonatomic, strong) NSIndexPath *recordMaxIndexPath;
 
-@property (nonatomic, strong) ImageGallery *imageGallery;
+@property (nonatomic, strong) RGImageGallery *imageGallery;
 
 @property (nonatomic, strong) UIToolbar *toolBar;
 
 @property (nonatomic, strong) UIButton *toolBarLabel;
 @property (nonatomic, strong) UIButton *toolBarLabelGallery;
+
+@property (nonatomic, strong) NSMutableArray <UIBarButtonItem *> *toolBarItem;
+@property (nonatomic, strong) NSMutableArray <UIBarButtonItem *> *toolBarItemGallery;
 
 @end
 
@@ -52,7 +55,10 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+//    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(__phAssetLoadStatusHasChanged:) name:RGPHAssetLoadStatusHasChanged object:nil];
+    
     [self.view addSubview:self.collectionView];
+    self.view.tintColor = [UIColor blackColor];
     
     UIImage *image = [UIImage imageWithContentsOfFile:[CTUserConfig chatBackgroundImagePath]];
     UIImageView *imageView = [[UIImageView alloc] initWithImage:image];
@@ -73,7 +79,7 @@
     self.navigationItem.rightBarButtonItem = down;
     [self __configViewWithCollection:_collection];
     
-    _imageGallery = [[ImageGallery alloc] initWithPlaceHolder:[UIImage rg_imageWithName:@"sad"] andDelegate:self];
+    _imageGallery = [[RGImageGallery alloc] initWithPlaceHolder:[UIImage rg_imageWithName:@"sad"] andDelegate:self];
     
     self.toolBar.translatesAutoresizingMaskIntoConstraints = NO;
     self.toolBar.items = [self __toolBarItemForGallery:NO];
@@ -149,25 +155,28 @@
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     _collectionView.contentInset = UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0);
+    _collectionView.scrollIndicatorInsets = _collectionView.contentInset;
 }
 
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     
     _collectionView.contentInset = UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0);
+    _collectionView.scrollIndicatorInsets = _collectionView.contentInset;
     
     CGFloat recordHeight = self.collectionView.frame.size.height;
     _collectionView.frame = self.view.bounds;
     
     if (recordHeight != self.view.bounds.size.height) {
         [self __configItemSize];
-        [_collectionView reloadData];
+        [self __doReloadData];
     }
     
     if (!_needScrollToBottom) {
@@ -198,7 +207,7 @@
 }
 
 - (void)__configViewWithCollection:(PHAssetCollection *)collection {
-    [self.collectionView reloadData];
+    [self __doReloadData];
     [self __configTitle];
     [self setNeedScrollToBottom:YES];
     [self __scrollToBottomIfNeed];
@@ -236,6 +245,18 @@
     [self.cache callBack:self];
 }
 
+- (void)__phAssetLoadStatusHasChanged:(NSNotification *)noti {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__doReloadData) object:nil];
+    [self performSelector:@selector(__doReloadData) withObject:nil afterDelay:0.3];
+}
+
+- (void)__doReloadData {
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [self.collectionView reloadData];
+    [CATransaction commit];
+}
+
 #pragma mark - UICollectionViewDelegate
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
@@ -248,13 +269,20 @@
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     RGImagePickerCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"RGImagePickerCell" forIndexPath:indexPath];
-    cell.cache = self.cache;
     cell.delegate = self;
     PHAsset *photo = _assets[indexPath.row];
-    [RGImagePickerCell setAsset:photo targetSize:_thumbSize updateCell:cell cache:self.cache];
+    [cell setAsset:photo targetSize:_thumbSize cache:_cache];
+    
+    if ([self.cache contain:photo]) {
+        [collectionView selectItemAtIndexPath:indexPath animated:NO scrollPosition:UICollectionViewScrollPositionNone];
+        [cell setSelected:YES];
+    } else {
+        [collectionView deselectItemAtIndexPath:indexPath animated:NO];
+        [cell setSelected:NO];
+    }
     
     if (_imageGallery.page == indexPath.row) {
-        if (_imageGallery.isPush > noPush) {
+        if (_imageGallery.pushState > RGImageGalleryPushStateNoPush) {
             cell.contentView.alpha = 0;
         } else {
             cell.contentView.alpha = 1;
@@ -275,11 +303,6 @@
     } else {
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
         [self performSelector:@selector(__recordMaxIndexPathIfNeed) withObject:nil afterDelay:0.3f inModes:@[NSRunLoopCommonModes]];
-    }
-    PHAsset *photo = _assets[indexPath.row];
-    if ([self.cache contain:photo]) {
-        [collectionView selectItemAtIndexPath:indexPath animated:NO scrollPosition:UICollectionViewScrollPositionNone];
-        [cell setSelected:YES];
     }
 }
 
@@ -303,7 +326,7 @@
     if (cell.lastTouchForce == 0) {
         PHAsset *photo = _assets[indexPath.row];
         if (!photo.rgIsLoaded) {
-            [RGImagePickerCell loadOriginalWithAsset:photo updateCell:cell];
+            [RGImagePickerCell loadOriginalWithAsset:photo updateCell:cell collectionView:collectionView progressHandler:nil completion:nil];
             return NO;
         }
         [_imageGallery showImageGalleryAtIndex:indexPath.row fatherViewController:self];
@@ -315,16 +338,6 @@
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldDeselectItemAtIndexPath:(NSIndexPath *)indexPath {
     return [self collectionView:collectionView shouldSelectItemAtIndexPath:indexPath];
 }
-
-//- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-//
-//}
-//
-//- (void)collectionView:(UICollectionView *)collectionView didDeselectItemAtIndexPath:(NSIndexPath *)indexPath {
-//    if ([self.cache contain:_assets[indexPath.row]]) {
-//        [self.cache removePhotos:@[_assets[indexPath.row]]];
-//    }
-//}
 
 - (void)__selectItemWithCurrentGalleryPage {
     [self __selectItemAtIndex:_imageGallery.page orCell:nil];
@@ -349,7 +362,7 @@
         } else {
             [RGImagePickerCell needLoadWithAsset:asset result:^(BOOL needLoad) {
                 if (needLoad) {
-                    [RGImagePickerCell loadOriginalWithAsset:asset updateCell:cell];
+                    [RGImagePickerCell loadOriginalWithAsset:asset updateCell:cell collectionView:self.collectionView progressHandler:nil completion:nil];
                 } else {
                     if (self.cache.maxCount <= 1) {
                         [self.cache setPhotos:@[asset]];
@@ -362,6 +375,7 @@
                             [self.collectionView selectItemAtIndexPath:indexPath animated:YES scrollPosition:UICollectionViewScrollPositionNone];
                         }
                     }
+                    [self __configViewWhenCacheChanged];
                 }
             }];
         }
@@ -382,66 +396,96 @@
     [self __configTitle];
 }
 
-- (NSArray <UIBarButtonItem *> *)__toolBarItemForGallery:(BOOL)forGallery {
-    NSMutableArray *array = [NSMutableArray array];
+- (NSMutableArray <UIBarButtonItem *> *)__createToolBarItmes {
     
-    PHAsset *asset = forGallery ? _assets[_imageGallery.page] : nil;
+    NSMutableArray *array = [NSMutableArray array];
     
     UIBarButtonItem *countItem = [[UIBarButtonItem alloc] initWithTitle:nil style:UIBarButtonItemStylePlain target:nil action:nil];
     
-    if (!_toolBarLabelGallery) {
-        _toolBarLabelGallery = [[UIButton alloc] init];
-        [_toolBarLabelGallery setBackgroundImage:[UIImage rg_templateImageWithSize:CGSizeMake(1, 1)] forState:UIControlStateNormal];
-        _toolBarLabelGallery.layer.cornerRadius = 12;
-        _toolBarLabelGallery.clipsToBounds = YES;
+    UIButton *button = [[UIButton alloc] init];
+    [button setBackgroundImage:[UIImage rg_templateImageWithSize:CGSizeMake(1, 1)] forState:UIControlStateNormal];
+    button.layer.cornerRadius = 10;
+    button.titleLabel.font = [UIFont systemFontOfSize:16];
+    button.clipsToBounds = YES;
+    countItem.customView = button;
+    [array addObject:countItem];
+    
+    [array addObject:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil]];
+    
+    UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(__selectItemWithCurrentGalleryPage)];
+    addItem.tag = 1;
+    [array addObject:addItem];
+    
+    [array addObject:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil]];
+    UIBarButtonItem *down = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"img_send2"] style:UIBarButtonItemStyleDone target:self action:@selector(__down)];
+    [array addObject:down];
+    
+    return array;
+}
+
+- (NSArray <UIBarButtonItem *> *)__toolBarItemForGallery:(BOOL)forGallery {
+    
+    if (forGallery && !_toolBarItemGallery) {
+        _toolBarItemGallery = [self __createToolBarItmes];
     }
     
-    if (!_toolBarLabel) {
-        _toolBarLabel = [[UIButton alloc] init];
-        [_toolBarLabel setBackgroundImage:[UIImage rg_templateImageWithSize:CGSizeMake(1, 1)] forState:UIControlStateNormal];
-        _toolBarLabel.layer.cornerRadius = 12;
-        _toolBarLabel.clipsToBounds = YES;
+    if (!forGallery && !_toolBarItem) {
+        _toolBarItem = [self __createToolBarItmes];
     }
     
-    UIButton *label = forGallery ? _toolBarLabelGallery : _toolBarLabel;
+    NSMutableArray <UIBarButtonItem *> *array = forGallery ? _toolBarItemGallery : _toolBarItem;
+    
+    // 0: countItem
+    UIBarButtonItem *countItem = array[0];
+    UIButton *label = countItem.customView;
     NSString *text = @(self.cache.pickPhotos.count).stringValue;
     
     if (![text isEqualToString:[label titleForState:UIControlStateNormal]]) {
         [label setTitle:text forState:UIControlStateNormal];
         [label sizeToFit];
-        CGFloat width = MAX(label.frame.size.width + 2, 28);
-        label.frame = CGRectMake(0, 0, width, 28);
+        CGFloat width = MAX(label.frame.size.width + 8, 26);
+        label.frame = CGRectMake(0, 0, width, 26);
     }
-    
     countItem.customView = label;
-    [array addObject:countItem];
     
-    [array addObject:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil]];
     
-    if (asset) {
+    // 2: center
+    UIBarButtonItem *centerItem = array[2];
+    if (forGallery) {
+        PHAsset *asset = forGallery ? _assets[_imageGallery.page] : nil;
         if ([self.cache contain:asset]) {
-            [array addObject:[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(__selectItemWithCurrentGalleryPage)]];
+            if (centerItem.tag != 2) {
+                centerItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(__selectItemWithCurrentGalleryPage)];
+                centerItem.tag = 2;
+                [array replaceObjectAtIndex:2 withObject:centerItem];
+            }
         } else {
             if (asset.rgIsLoaded) {
-                UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(__selectItemWithCurrentGalleryPage)];
-                addItem.enabled = !self.cache.isFull;
-                [array addObject:addItem];
+                if (centerItem.tag != 1) {
+                    centerItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(__selectItemWithCurrentGalleryPage)];
+                    centerItem.enabled = !self.cache.isFull;
+                    centerItem.tag = 1;
+                    [array replaceObjectAtIndex:2 withObject:centerItem];
+                }
             } else {
-                UIActivityIndicatorView *loading = [UIActivityIndicatorView new];
-                loading.activityIndicatorViewStyle = UIActivityIndicatorViewStyleGray;
-                [loading sizeToFit];
-                [loading startAnimating];
-                UIBarButtonItem *loadingItem = [[UIBarButtonItem alloc] initWithCustomView:loading];
-                [array addObject:loadingItem];
+                if (!centerItem.customView) {
+                    UIActivityIndicatorView *loading = [UIActivityIndicatorView new];
+                    loading.activityIndicatorViewStyle = UIActivityIndicatorViewStyleGray;
+                    [loading sizeToFit];
+                    [loading startAnimating];
+                    centerItem.customView = loading;
+                    centerItem.tag = 3;
+                }
             }
         }
+    } else {
+        centerItem.enabled = NO;
+        centerItem.tintColor = [UIColor clearColor];
     }
     
-    [array addObject:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil]];
-    UIBarButtonItem *down = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(__down)];
-    down.enabled = self.cache.pickPhotos.count;
-    [array addObject:down];
-    
+    // downItem
+    UIBarButtonItem *downItem = array[4];
+    downItem.enabled = self.cache.pickPhotos.count;
     return array;
 }
 
@@ -449,7 +493,7 @@
 
 - (void)collectionView:(UICollectionView *)collectionView prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
     for (NSIndexPath *indexPath in indexPaths) {
-        [RGImagePickerCell setAsset:_assets[indexPath.row] targetSize:self.thumbSize updateCell:nil cache:self.cache];
+        [self.cache imageForAsset:_assets[indexPath.row] onlyCache:NO syncLoad:NO allowNet:YES targetSize:self.thumbSize completion:nil];
     }
 }
 
@@ -473,73 +517,100 @@
         // Check for changes to the displayed album itself
         // (its existence and metadata, not its member assets).
         
-        //        PHObjectChangeDetails *albumChanges = [changeInstance changeDetailsForObject:self.assets];
-        //        if (albumChanges) {
-        //            // Fetch the new album and update the UI accordingly.
-        //            self.displayedAlbum = [albumChanges objectAfterChanges];
-        //            self.navigationController.navigationItem.title = self.assets.localizedTitle;
-        //        }
-        
-        // Check for changes to the list of assets (insertions, deletions, moves, or updates).
+        PHObjectChangeDetails *albumChanges = [changeInstance changeDetailsForObject:self.collection];
+        if (albumChanges) {
+            // Fetch the new album and update the UI accordingly.
+            self->_collection = [albumChanges objectAfterChanges];
+            [self __configTitle];
+        }
         
         BOOL isFull = self.cache.isFull;
         
         PHFetchResultChangeDetails *collectionChanges = [changeInstance changeDetailsForFetchResult:self.assets];
         if (collectionChanges) {
-            // Get the new fetch result for future change tracking.
+            
             PHFetchResult <PHAsset *> *oldAssets = self.assets;
             self.assets = collectionChanges.fetchResultAfterChanges;
             
             if (collectionChanges.hasIncrementalChanges)  {
-                // Tell the collection view to animate insertions/deletions/moves
-                // and to refresh any cells that have changed content.
-                [self.collectionView performBatchUpdates:^{
-                    NSIndexSet *removed = collectionChanges.removedIndexes;
+                
+                UICollectionView *collectionView = self.collectionView;
+                NSArray *removedPaths;
+                NSArray *insertedPaths;
+                NSArray *changedPaths;
+                
+                NSIndexSet *removed = [collectionChanges removedIndexes];
+                removedPaths = [self __indexPathsFromIndexSet:removed];
+                
+                NSIndexSet *inserted = [collectionChanges insertedIndexes];
+                insertedPaths = [self __indexPathsFromIndexSet:inserted];
+                
+                NSIndexSet *changed = [collectionChanges changedIndexes];
+                changedPaths = [self __indexPathsFromIndexSet:changed];
+                
+                BOOL shouldReload = NO;
+                
+                if (changedPaths != nil && removedPaths != nil) {
+                    for (NSIndexPath *changedPath in changedPaths) {
+                        if ([removedPaths containsObject:changedPath]) {
+                            shouldReload = YES;
+                            break;
+                        }
+                    }
+                }
+                
+                if (removedPaths.lastObject && ((NSIndexPath *)removedPaths.lastObject).item >= self.assets.count) {
+                    shouldReload = YES;
+                }
+                
+                [collectionView performBatchUpdates:^{
                     if (removed.count) {
-                        [self.collectionView deleteItemsAtIndexPaths:[self __indexPathsFromIndexSet:removed]];
-                        
                         NSArray *removePhotos = [oldAssets objectsAtIndexes:removed];
                         [self.cache removePhotos:removePhotos];
+                        [collectionView deleteItemsAtIndexPaths:removedPaths];
                         
-                        [removed enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
-                            [self->_imageGallery deletePage:idx];
-                        }];
+                        [self.imageGallery deletePages:removed];
                         [self __configViewWhenCacheChanged];
-                        
-                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                            if (self.cache.isFull != isFull) {
-                                [self.collectionView reloadData];
-                            }
-                        });
                     }
-                    NSIndexSet *inserted = collectionChanges.insertedIndexes;
+                    
                     if (inserted.count) {
-                        [self.collectionView insertItemsAtIndexPaths:[self __indexPathsFromIndexSet:inserted]];
+                        [collectionView insertItemsAtIndexPaths:insertedPaths];
+                        [self.imageGallery insertPages:inserted];
                     }
-                    NSIndexSet *changed = collectionChanges.changedIndexes;
+                    
                     if (changed.count) {
                         [self.cache removeCachePhotoForAsset:[self.assets objectsAtIndexes:changed]];
-                        [self.collectionView reloadItemsAtIndexPaths:[self __indexPathsFromIndexSet:changed]];
-                        [self->_imageGallery updatePages];
+                        if (!shouldReload) {
+                            [collectionView reloadItemsAtIndexPaths:changedPaths];
+                        }
+                        [self.imageGallery updatePages:changed];
                     }
-                    if (collectionChanges.hasMoves) {
+                    
+                    
+                    if ([collectionChanges hasMoves]) {
                         [collectionChanges enumerateMovesWithBlock:^(NSUInteger fromIndex, NSUInteger toIndex) {
                             NSIndexPath *fromIndexPath = [NSIndexPath indexPathForItem:fromIndex inSection:0];
                             NSIndexPath *toIndexPath = [NSIndexPath indexPathForItem:toIndex inSection:0];
-                            [self.collectionView moveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
+                            [collectionView moveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
                         }];
                     }
-                } completion:nil];
+                    
+                } completion:^(BOOL finished) {
+                    if (shouldReload || self.cache.isFull != isFull) {
+                        [self __doReloadData];
+                    }
+                }];
             } else {
-                // Detailed change information is not available;
-                // repopulate the UI from the current fetch result.
-                [self.collectionView reloadData];
+                [self __doReloadData];
             }
         }
     });
 }
 
 - (NSArray<NSIndexPath *> *)__indexPathsFromIndexSet:(NSIndexSet *)indexSet {
+    if (!indexSet) {
+        return nil;
+    }
     NSMutableArray *array = [NSMutableArray arrayWithCapacity:indexSet.count];
     [indexSet enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
         [array addObject:[NSIndexPath indexPathForItem:idx inSection:0]];
@@ -563,15 +634,15 @@
 
 #pragma mark - ImageGalleryDelegate
 
-- (NSInteger)numOfImagesForImageGallery:(ImageGallery *)imageGallery {
+- (NSInteger)numOfImagesForImageGallery:(RGImageGallery *)imageGallery {
     return _assets.count;
 }
 
-- (UIColor *)titleColorForImageGallery:(ImageGallery *)imageGallery {
+- (UIColor *)titleColorForImageGallery:(RGImageGallery *)imageGallery {
     return self.navigationController.navigationBar.tintColor;
 }
 
-- (UIImage *)backgroundImageForImageGalleryBar:(ImageGallery *)imageGallery {
+- (UIImage *)backgroundImageForImageGalleryBar:(RGImageGallery *)imageGallery {
     return nil;
 }
 
@@ -579,40 +650,34 @@
     return nil;
 }
 
-- (NSString *)titleForImageGallery:(ImageGallery *)imageGallery AtIndex:(NSInteger)index {
+- (NSString *)titleForImageGallery:(RGImageGallery *)imageGallery AtIndex:(NSInteger)index {
     if (index >= 0) {
         PHAsset *assert = _assets[index];
         NSString *title = [[assert creationDate] rg_stringWithDateFormat:@"yyyy-MM-dd\nHH:mm"];
-        
-//        CLGeocoder *geocoder = [[CLGeocoder alloc] init];
-//        [geocoder reverseGeocodeLocation:_assets[index].location
-//                       completionHandler:^(NSArray *placemarks, NSError *error){
-//                           if(!error){
-//                               for (CLPlacemark *place in placemarks) {
-//                                   NSString *city = place.locality;
-//                                   NSString *administrativeArea = place.administrativeArea;
-//                                   NSString *addressString = nil;
-//                                   if ([city isEqualToString:administrativeArea]) {
-//                                       //四大直辖市
-//                                       addressString = [NSString stringWithFormat:@"%@%@",city,place.subLocality];
-//                                   } else{
-//                                       addressString = [NSString stringWithFormat:@"%@%@",administrativeArea,city];
-//                                   }
-//                                   break;
-//                               }
-//                           }
-//                       }];
         return title;
     } else {
         return @"";
     }
 }
 
-- (UIImage *)imageGallery:(ImageGallery *)imageGallery imageAtIndex:(NSInteger)index targetSize:(CGSize)targetSize updateImage:(void (^ _Nullable)(UIImage * _Nonnull))updateImage {
+- (UIImage *)imageGallery:(RGImageGallery *)imageGallery thumbnailAtIndex:(NSInteger)index targetSize:(CGSize)targetSize {
+    if (index>=0) {
+        PHAsset *asset = _assets[index];
+        return [self.cache imageForAsset:asset onlyCache:NO syncLoad:YES allowNet:NO targetSize:self.thumbSize completion:nil];
+    }
+    return nil;
+}
+
+- (UIImage *)imageGallery:(RGImageGallery *)imageGallery
+             imageAtIndex:(NSInteger)index
+               targetSize:(CGSize)targetSize
+              updateImage:(void (^ _Nullable)(UIImage * _Nonnull))updateImage {
     if (index>=0) {
         PHAsset *asset = _assets[index];
         if (updateImage) {
-            [RGImagePicker loadResourceFromAsset:asset progressHandler:nil completion:^(NSData * _Nullable imageData, NSError * _Nullable error) {
+            [RGImagePickerCell loadOriginalWithAsset:asset updateCell:nil collectionView:self.collectionView progressHandler:^(double progress) {
+                
+            } completion:^(NSData * _Nullable imageData, NSError * _Nullable error) {
                 UIImage *image = [UIImage rg_imageOrGifWithData:imageData];
                 if (image) {
                     updateImage(image);
@@ -622,50 +687,25 @@
                 }
             }];
         }
-        return [self.cache imageForAsset:asset];
+        return nil;
     } else {
         return nil;
     }
 }
 
-- (BOOL)isVideoAtIndex:(NSInteger)index {
-    return NO;
-}
-
-- (UIImage *)buttonForPlayVideo {
-    return [UIImage imageNamed:@"jus_video_play"];
-}
-
-- (BOOL)imageGallery:(ImageGallery *)imageGallery selectePlayVideoAtIndex:(NSInteger)index {
-//    if (index >= 0) {
-//        MediaDetailsModel *model = _dataList[index];
-//        MPMoviePlayerViewController *movie = [[MPMoviePlayerViewController alloc] initWithContentURL:model.fileUrl];
-//        [imageGallery presentMoviePlayerViewControllerAnimated:movie];
-//    }
-    return YES;
-}
-
-- (void)imageGallery:(ImageGallery *)imageGallery selecteDeleteImageAtIndex:(NSInteger)index {
-//    [self showAlertDeleteInView:imageGallery.view];
-}
-
-- (void)imageGallery:(ImageGallery *)imageGallery selecteShareImageAtIndex:(NSInteger)index {
-//    [self showAlertSaveInView:imageGallery.view];
-}
-
-- (UIView *)imageGallery:(ImageGallery *)imageGallery thumbViewForPushAtIndex:(NSInteger)index {
+- (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForPushAtIndex:(NSInteger)index {
     if (index >= 0) {
-        if (imageGallery.isPush == pushed) {
-            if (imageGallery.isPush == pushed && index>=0) {
+        if (imageGallery.pushState == RGImageGalleryPushStatePushed) {
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+            if (imageGallery.pushState == RGImageGalleryPushStatePushed && index>=0) {
                 NSIndexPath *needShowIndexPath = [NSIndexPath indexPathForRow:index inSection:0];
                 if (![self.collectionView.indexPathsForVisibleItems containsObject:needShowIndexPath]) {
                     [self.collectionView scrollToItemAtIndexPath:needShowIndexPath atScrollPosition:UICollectionViewScrollPositionCenteredVertically animated:NO];
                 }
             }
-            [CATransaction begin];
-            [CATransaction setDisableActions:YES];
-            [self.view setNeedsLayout];
-            [self.view layoutIfNeeded];
+            [self.collectionView setNeedsLayout];
+            [self.collectionView layoutIfNeeded];
             [CATransaction commit];
         }
         UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForRow:index inSection:0]];
@@ -675,23 +715,34 @@
     }
 }
 
-- (BOOL)imageGallery:(ImageGallery *)imageGallery toolBarItemsShouldDisplayForIndex:(NSInteger)index {
+- (BOOL)imageGallery:(RGImageGallery *)imageGallery toolBarItemsShouldDisplayForIndex:(NSInteger)index {
     return YES;
 }
 
-- (NSArray<UIBarButtonItem *> *)imageGallery:(ImageGallery *)imageGallery toolBarItemsForIndex:(NSInteger)index {
+- (NSArray<UIBarButtonItem *> *)imageGallery:(RGImageGallery *)imageGallery toolBarItemsForIndex:(NSInteger)index {
     return [self __toolBarItemForGallery:YES];
 }
 
-- (RGBackCompletion)imageGallery:(ImageGallery *)imageGallery willBackToParentViewController:(UIViewController *)viewController {
+- (RGIMGalleryTransitionCompletion)imageGallery:(RGImageGallery *)imageGallery willPopToParentViewController:(UIViewController *)viewController {
     
     UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForRow:imageGallery.page inSection:0]];
     cell.contentView.alpha = 0;
     
-    RGBackCompletion com = ^(BOOL flag) {
-        cell.contentView.alpha = 1;
+    RGIMGalleryTransitionCompletion com = ^(BOOL flag) {
+        [self __doReloadData];
     };
     
+    return com;
+}
+
+- (RGIMGalleryTransitionCompletion)imageGallery:(RGImageGallery *)imageGallery willBePushedWithParentViewController:(UIViewController *)viewController {
+    
+    UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForRow:imageGallery.page inSection:0]];
+    cell.contentView.alpha = 0;
+    
+    RGIMGalleryTransitionCompletion com = ^(BOOL flag) {
+        cell.contentView.alpha = 1;
+    };
     return com;
 }
 

@@ -174,8 +174,36 @@
         }
     };
     
+    void(^oldMethod)(void) = ^{
+        PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
+        options.synchronous = NO;
+        options.networkAccessAllowed = networkAccessAllowed;
+        options.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+        options.progressHandler = ^(double progress, NSError * _Nullable error, BOOL * _Nonnull stop, NSDictionary * _Nullable info) {
+            if (progressHandler) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    asset.rgLoadLargeImageProgress = progress;
+                    progressHandler(progress);
+                });
+            }
+            callBackIfNeed(nil, error);
+        };
+        
+        [[PHCachingImageManager defaultManager] requestImageDataForAsset:asset options:options resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
+            if (!imageData) {
+                return;
+            }
+            callBackIfNeed(imageData, nil);
+        }];
+    };
+    
     if (@available(iOS 9.0, *)) {
         NSArray<PHAssetResource *> * resources = [PHAssetResource assetResourcesForAsset:asset];
+        if (!resources.count) {
+            oldMethod();
+            return;
+        }
+        
         for (NSInteger i = resources.count - 1; i >= 0; i--) {
             PHAssetResource *obj = resources[i];
             if (![self isPhoto:obj]) {
@@ -188,6 +216,7 @@
             option.progressHandler = ^(double progress) {
                 if (progressHandler) {
                     dispatch_async(dispatch_get_main_queue(), ^{
+                        asset.rgLoadLargeImageProgress = progress;
                         progressHandler(progress);
                     });
                 }
@@ -202,25 +231,7 @@
             break;
         }
     } else {
-        PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
-        options.synchronous = NO;
-        options.networkAccessAllowed = networkAccessAllowed;
-        options.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
-        options.progressHandler = ^(double progress, NSError * _Nullable error, BOOL * _Nonnull stop, NSDictionary * _Nullable info) {
-            if (progressHandler) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    progressHandler(progress);
-                });
-            }
-            callBackIfNeed(nil, error);
-        };
-        
-        [[PHCachingImageManager defaultManager] requestImageDataForAsset:asset options:options resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
-            if (!imageData) {
-                return;
-            }
-            callBackIfNeed(imageData, nil);
-        }];
+        oldMethod();
     }
 }
 

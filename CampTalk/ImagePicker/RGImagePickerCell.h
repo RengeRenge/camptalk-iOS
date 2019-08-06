@@ -39,11 +39,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak) id <RGImagePickerCellDelegate> delegate;
 @property (nonatomic, assign) CGFloat lastTouchForce;
 
-+ (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize updateCell:(RGImagePickerCell *_Nullable)cell cache:(RGImagePickerCache *_Nullable)cache;
+//+ (UIImage *)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize updateCell:(RGImagePickerCell *_Nullable)cell cache:(RGImagePickerCache *_Nullable)cache sync:(BOOL)sync ;
+
+- (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize cache:(RGImagePickerCache *)cache;
+
 + (void)needLoadWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result;
 
 - (BOOL)isCurrentAsset:(PHAsset *)asset;
-+ (void)loadOriginalWithAsset:(PHAsset *)asset updateCell:(RGImagePickerCell *)cell;
++ (void)loadOriginalWithAsset:(PHAsset *)asset updateCell:(RGImagePickerCell * _Nullable)cell collectionView:(UICollectionView *)collectionView progressHandler:(void(^_Nullable)(double progress))progressHandler completion:(void (^_Nullable)(NSData *_Nullable imageData, NSError *_Nullable error))completion;
+
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated;
 

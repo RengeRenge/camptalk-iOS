@@ -6,7 +6,7 @@
 //  Copyright © 2016年 acumen. All rights reserved.
 //
 
-#import "ImageGallery.h"
+#import "RGImageGallery.h"
 
 #define TEXTFONTSIZE 14
 #define BUTTON_CLICK_WIDTH  100
@@ -19,6 +19,13 @@
 
 #define SYSTEM_LESS_THAN(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
 #define ButtonTag 12222
+
+typedef enum : NSUInteger {
+    RGIGViewIndexL=0,
+    RGIGViewIndexM,
+    RGIGViewIndexR,
+    RGIGViewIndexCount,
+} RGIGViewIndex;
 
 @interface UIBigButton: UIButton
 
@@ -88,7 +95,7 @@
 
 @end
 
-@interface ImageGallery()
+@interface RGImageGallery()
 @property (nonatomic, strong) IGNavigationControllerDelegate *navigationControllerDelegate;
 @property (nonatomic, strong) UILabel        *titleLabel;
 
@@ -116,7 +123,7 @@
 
 @end
 
-@implementation ImageGallery
+@implementation RGImageGallery
 
 - (instancetype)initWithPlaceHolder:(UIImage *)placeHolder andDelegate:(id)delegate{
     self = [super init];
@@ -125,7 +132,7 @@
         self.placeHolder    =   placeHolder;
         self.barBackgroundImage = nil;
         self.page           =   0;
-        self.isPush         =   noPush;
+        self.pushState         =   RGImageGalleryPushStateNoPush;
     }
     return self;
 }
@@ -142,24 +149,25 @@ enum{
 -(void)viewWillAppear:(BOOL)animated{
     [super viewWillAppear:animated];
     
-    if (self.isPush == pushing) {
+    if (self.pushState == RGImageGalleryPushStatePushing) {
         [self getCountWithSetContentSize:YES];
 
         //Load OtherImage
         for (int i=0; i < self.scrollViewArr.count; i++) {
-            if (i != middle) {
-                [self requestImage:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:_page-middle+i];
+            if (i != RGIGViewIndexM) {
+                [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:_page-RGIGViewIndexM+i];
             }
         }
         [self setTitle];
+        [self configToolBarItem];
         
         //Sequence ScrollViews
         [self setPositionAtPage:_page ignoreIndex:-1];
         
-        [self.BgScrollView setDelegate:nil];
-        [self.BgScrollView setContentOffset:CGPointMake(_page*pageWidth, 0) animated:NO];
+        [self.bgScrollView setDelegate:nil];
+        [self.bgScrollView setContentOffset:CGPointMake(_page*pageWidth, 0) animated:NO];
         [self getCountWithSetContentSize:YES];
-        [self.BgScrollView setDelegate:self];
+        [self.bgScrollView setDelegate:self];
     }
     [self hide:self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
 }
@@ -169,7 +177,7 @@ enum{
     [self.view setBackgroundColor:[UIColor clearColor]];
     [self initImageScrollViewArr];
     [self setBackItem];
-    [self.view addSubview:self.BgScrollView];
+    [self.view addSubview:self.bgScrollView];
     _hideTopBar = NO;
     _hideToolBar = NO;
 
@@ -207,14 +215,14 @@ enum{
     [self.view layoutIfNeeded];
     
     //Load Visiable Image
-    [self setMiddleImageViewForPushWithScale:YES];
+    [self setMiddleImageViewForPushWithScale:NO];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     self.navigationController.delegate = self.navigationControllerDelegate;
     [self.navigationControllerDelegate addPinchGestureOnView:self.view FromVC:self toVC:_viewControllerF].operation = UINavigationControllerOperationPop;
-    self.isPush = pushed;
+    self.pushState = RGImageGalleryPushStatePushed;
     [self hide:!self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
     [self hide:self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
 }
@@ -230,7 +238,7 @@ enum{
 
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
-    self.isPush = noPush;
+    self.pushState = RGImageGalleryPushStateNoPush;
 }
 
 - (void)viewDidLayoutSubviews {
@@ -240,14 +248,14 @@ enum{
     }
     _lastSize = self.view.bounds.size;
     
-    [self.BgScrollView setDelegate:nil];
+    [self.bgScrollView setDelegate:nil];
     // Update ContentSize
     [self getCountWithSetContentSize:YES];
     [self setPositionAtPage:_page ignoreIndex:-1];
     
     // Update ImageView Size
     for (int i=0; i<self.scrollViewArr.count; i++) {
-        if (self.isPush == pushing && i == middle) {
+        if (self.pushState == RGImageGalleryPushStatePushing && i == RGIGViewIndexM) {
             continue;
         }
         UIImageView *imageView = self.imageViewArr[i];
@@ -256,8 +264,8 @@ enum{
         UIButton *play = [imageView viewWithTag:ButtonTag];
         play.center = CGPointMake(imageView.frame.size.width/2, imageView.frame.size.height/2);
     }
-    [self.BgScrollView setContentOffset:CGPointMake(_page * pageWidth, 0) animated:NO];
-    [self.BgScrollView setDelegate:self];
+    [self.bgScrollView setContentOffset:CGPointMake(_page * pageWidth, 0) animated:NO];
+    [self.bgScrollView setDelegate:self];
 }
 
 - (IGNavigationControllerDelegate *)navigationControllerDelegate {
@@ -268,24 +276,24 @@ enum{
 }
 
 #pragma mark - UI
-- (UIScrollView *)BgScrollView {
-    if (!_BgScrollView) {
-        _BgScrollView = [[UIScrollView alloc]initWithFrame:CGRectMake(0, 0, pageWidth, kScreenHeight)];
-        [_BgScrollView setPagingEnabled:YES];
-        [_BgScrollView setDelegate:self];
-        [_BgScrollView setBackgroundColor:[UIColor clearColor]];
-        [_BgScrollView setShowsHorizontalScrollIndicator:NO];
-        _BgScrollView.bounces = YES;
+- (UIScrollView *)bgScrollView {
+    if (!_bgScrollView) {
+        _bgScrollView = [[UIScrollView alloc]initWithFrame:CGRectMake(0, 0, pageWidth, kScreenHeight)];
+        [_bgScrollView setPagingEnabled:YES];
+        [_bgScrollView setDelegate:self];
+        [_bgScrollView setBackgroundColor:[UIColor clearColor]];
+        [_bgScrollView setShowsHorizontalScrollIndicator:NO];
+        _bgScrollView.bounces = YES;
         
         UITapGestureRecognizer *singleTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(hideBar:)];
         singleTapGesture.cancelsTouchesInView = NO;
         singleTapGesture.delegate = self;
         [singleTapGesture setNumberOfTapsRequired:1];//单击
         [singleTapGesture setNumberOfTouchesRequired:1];//单点触碰
-        _BgScrollView.userInteractionEnabled = YES;
-        [_BgScrollView addGestureRecognizer:singleTapGesture];
+        _bgScrollView.userInteractionEnabled = YES;
+        [_bgScrollView addGestureRecognizer:singleTapGesture];
     }
-    return _BgScrollView;
+    return _bgScrollView;
 }
 
 - (void)setBackItem {
@@ -301,22 +309,18 @@ enum{
         _titleLabel.numberOfLines = 2;
         _titleLabel.font = [UIFont systemFontOfSize:15];
         [_titleLabel setTextAlignment:NSTextAlignmentCenter];
-        if (_delegate && [_delegate respondsToSelector:@selector(titleColorForImageGallery:)]) {
-            _titleLabel.textColor = [_delegate titleColorForImageGallery:self];
-        }
-        self.navigationItem.titleView = _titleLabel;
     }
     return _titleLabel;
 }
 
 - (void)initImageScrollViewArr {
-    self.imageViewArr = [NSMutableArray arrayWithArray:@[[self buildImageView],[self buildImageView],[self buildImageView],[self buildImageView],[self buildImageView]]];
-    
-    self.scrollViewArr = [NSMutableArray arrayWithArray:@[[self buildScrollView],[self buildScrollView],[self buildScrollView],[self buildScrollView],[self buildScrollView]]];
-    
-    for (int i = 0; i < self.scrollViewArr.count; i++) {
-        [self.scrollViewArr[i] addSubview:self.imageViewArr[i]];
-        [self.BgScrollView addSubview:self.scrollViewArr[i]];
+    self.imageViewArr = [NSMutableArray array];
+    self.scrollViewArr = [NSMutableArray array];
+    for (RGIGViewIndex i = 0; i < RGIGViewIndexCount; i++) {
+        [self.imageViewArr addObject:[self buildImageView]];
+        [self.scrollViewArr addObject:[self buildScrollView]];
+        [self.scrollViewArr.lastObject addSubview:self.imageViewArr.lastObject];
+        [self.bgScrollView addSubview:self.scrollViewArr.lastObject];
     }
 }
 
@@ -361,21 +365,34 @@ enum{
     return imageScrollView;
 }
 
-- (void)setTitle {
-    if ([self getCountWithSetContentSize:NO] > 0) {
-        if (_delegate && [_delegate respondsToSelector:@selector(titleForImageGallery:AtIndex:)]) {
-            self.titleLabel.text = [_delegate titleForImageGallery:self AtIndex:_page];
-            [self.titleLabel sizeToFit];
-        }
-    } else {
-        self.navigationItem.title = @"";
-    }
+- (void)loadInfoWhenPageChanged:(BOOL)loadCurrentImage {
+    [self setTitle];
     [self configToolBarItem];
+    [self loadLargeImageForCurrentPage];
+}
+
+- (void)setTitle {
+    NSInteger page = self.page;
+    NSInteger count = [self getCountWithSetContentSize:NO];
+    if (page >= count || page < 0) {
+        self.navigationItem.title = @"";
+        return;
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(titleForImageGallery:AtIndex:)]) {
+        self.titleLabel.text = [_delegate titleForImageGallery:self AtIndex:page];
+        [self.titleLabel sizeToFit];
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(titleColorForImageGallery:)]) {
+        UIColor *color = [_delegate titleColorForImageGallery:self];
+        self.titleLabel.textColor = color;
+        self.toolbar.tintColor = color;
+    }
+    self.navigationItem.titleView = _titleLabel;
 }
 
 - (void)setMiddleImageViewForPushSetScale:(CGFloat)scale setCenter:(BOOL)setCenter orignalFrame:(CGRect)originalFrame centerX:(CGFloat)x cencentY:(CGFloat)y {
     
-    UIImageView *imageView = self.imageViewArr[middle];
+    UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
     
     if (!imageView.image) {
         [imageView setImage:[self getPushImage]];
@@ -397,7 +414,7 @@ enum{
 
 - (void)setMiddleImageViewForPopSetScale:(CGFloat)scale setCenter:(BOOL)setCenter centerX:(CGFloat)x cencentY:(CGFloat)y {
     
-    UIImageView *imageView = self.imageViewArr[middle];
+    UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
     
     if (!imageView.image) {
         [imageView setImage:[self getPushImage]];
@@ -423,7 +440,7 @@ enum{
     if (!self.isViewLoaded) {
         return;
     }
-    UIImageView *imageView = self.imageViewArr[middle];
+    UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
     imageView.image = [self getPushImage];
     
     imageView.frame = scale ? [self getPushViewFrameScaleFit] : [self getPushViewFrame];
@@ -441,7 +458,7 @@ enum{
 
 - (void)setMiddleImageViewWhenPopFinished {
     if ([self getCountWithSetContentSize:NO] != 0) {
-        UIImageView *imageView = self.imageViewArr[middle];
+        UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
         CGRect pushFrame = [self getPushViewFrame];
         imageView.frame = pushFrame;
         [self setMiddleImageViewPlayButton];
@@ -454,7 +471,7 @@ enum{
 
 - (void)setMiddleImageViewWhenPushFinished {
     if ([self getCountWithSetContentSize:NO] != 0) {
-        UIImageView *imageView = self.imageViewArr[middle];
+        UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
         UIButton *play = [imageView viewWithTag:ButtonTag];
         
         CGRect pushFrame = [self getImageViewFrameWithImage:imageView.image];
@@ -468,7 +485,7 @@ enum{
 }
 
 - (void)setMiddleImageViewPlayButton {
-    UIImageView *imageView = self.imageViewArr[middle];
+    UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
     UIButton *play = [imageView viewWithTag:ButtonTag];
     if (play) {
         play.center = CGPointMake(imageView.frame.size.width/2, imageView.frame.size.height/2);
@@ -488,12 +505,21 @@ enum{
 
 - (void)configToolBarItem {
     BOOL display = NO;
-    if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:toolBarItemsShouldDisplayForIndex:)]) {
-        
-        display = [self.delegate imageGallery:self toolBarItemsShouldDisplayForIndex:_page];
-        
-        if (display && self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:toolBarItemsForIndex:)]) {
-            self.toolbar.items = [self.delegate imageGallery:self toolBarItemsForIndex:_page];
+    
+    NSInteger page = self.page;
+    NSInteger count = [self getCountWithSetContentSize:NO];
+    if (page >= count || page < 0) {
+        display = NO;
+    } else {
+        if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:toolBarItemsShouldDisplayForIndex:)]) {
+            display = [self.delegate imageGallery:self toolBarItemsShouldDisplayForIndex:page];
+            
+            if (display && self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:toolBarItemsForIndex:)]) {
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+                [self.toolbar setItems:[self.delegate imageGallery:self toolBarItemsForIndex:page] animated:NO];
+                [CATransaction commit];
+            }
         }
     }
     self.toolbar.hidden = !display;
@@ -504,8 +530,8 @@ enum{
     if (_delegate && [_delegate respondsToSelector:@selector(numOfImagesForImageGallery:)]) {
         count = [_delegate numOfImagesForImageGallery:self];
         if (setSize) {
-            self.BgScrollView.contentSize = CGSizeMake(count*pageWidth, 0);
-            [self.BgScrollView setFrame:CGRectMake(0, 0, pageWidth, kScreenHeight)];
+            self.bgScrollView.contentSize = CGSizeMake(count*pageWidth, 0);
+            [self.bgScrollView setFrame:CGRectMake(0, 0, pageWidth, kScreenHeight)];
         }
     }
     return count;
@@ -514,66 +540,53 @@ enum{
 - (void)setPositionAtPage:(NSInteger)page ignoreIndex:(NSInteger)ignore {
     NSInteger sum = [self getCountWithSetContentSize:NO];
     for (int i=0; i<self.scrollViewArr.count; i++) {
-        NSInteger current = page-middle+i;
+        NSInteger current = page-RGIGViewIndexM+i;
         UIScrollView *view = self.scrollViewArr[i];
         if (ignore != i) {
             if (current>=0 && current<sum) {
-                [view setFrame:CGRectMake(pageWidth*current, 0, kScreenWidth, self.BgScrollView.frame.size.height)];
+                [view setFrame:CGRectMake(pageWidth*current, 0, kScreenWidth, self.bgScrollView.frame.size.height)];
             } else {
-                [view setFrame:CGRectMake(pageWidth*current, 0, kScreenWidth, self.BgScrollView.frame.size.height)];
+                [view setFrame:CGRectMake(pageWidth*current, 0, kScreenWidth, self.bgScrollView.frame.size.height)];
             }
         }
     }
 }
 
-- (void)requestImage:(UIImageView*)imageView withScrollView:(UIScrollView*)scrollView atPage:(NSInteger)page {
+- (void)loadThumbnail:(UIImageView*)imageView withScrollView:(UIScrollView*)scrollView atPage:(NSInteger)page {
     
     if (page >= [self getCountWithSetContentSize:NO] || page < 0) {
         imageView.image = nil;
         return;
     }
     UIImage *image;
-    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:imageAtIndex:targetSize:updateImage:)]) {
-        
-        imageView.tag = page;
-        
-        void(^updateImage)(UIImage *image) = ^(UIImage *image) {
-            if (page != imageView.tag) {
-                return;
+    image = [_delegate imageGallery:self thumbnailAtIndex:page targetSize:kTargetSize];
+    
+    //if image is nil , then show placeHolder
+    if (!image) {
+        image = _placeHolder;
+    }
+    
+    if (image) {
+        [imageView setImage:image];
+        //set appropriate frame for imageView
+        CGRect rect = [self getImageViewFrameWithImage:image];
+        [imageView setFrame:rect];
+        //设置最大的缩放比例为 不超过屏幕高度2倍
+//        [scrollView setMaximumZoomScale:kScreenHeight/image.size.height*2];
+    }
+    UIButton *play = [imageView viewWithTag:ButtonTag];
+    if (play) {
+        play.center = CGPointMake(imageView.frame.size.width/2, imageView.frame.size.height/2);
+        play.transform = CGAffineTransformMakeScale(1, 1);
+        if (self->_delegate && [self->_delegate respondsToSelector:@selector(isVideoAtIndex:)]) {
+            if ([self->_delegate isVideoAtIndex:page]) {
+                play.enabled = YES;
+                play.alpha = 1.0f;
+            } else {
+                play.enabled = NO;
+                play.alpha = 0.0f;
             }
-            if (image) {
-                [imageView setImage:image];
-                //set appropriate frame for imageView
-                CGRect rect = [self getImageViewFrameWithImage:image];
-                [imageView setFrame:rect];
-                //设置最大的缩放比例为 不超过屏幕高度2倍
-//                [scrollView setMaximumZoomScale:kScreenHeight/image.size.height*2];
-            }
-            UIButton *play = [imageView viewWithTag:ButtonTag];
-            if (play) {
-                play.center = CGPointMake(imageView.frame.size.width/2, imageView.frame.size.height/2);
-                play.transform = CGAffineTransformMakeScale(1, 1);
-                if (self->_delegate && [self->_delegate respondsToSelector:@selector(isVideoAtIndex:)]) {
-                    if ([self->_delegate isVideoAtIndex:page]) {
-                        play.enabled = YES;
-                        play.alpha = 1.0f;
-                    } else {
-                        play.enabled = NO;
-                        play.alpha = 0.0f;
-                    }
-                }
-            }
-        };
-        
-        image = [_delegate imageGallery:self imageAtIndex:page targetSize:kTargetSize updateImage:^(UIImage *image) {
-            updateImage(image);
-        }];
-        
-        //if image is nil , then show placeHolder
-        if (!image) {
-            image = _placeHolder;
         }
-        updateImage(image);
     }
 }
 
@@ -591,7 +604,7 @@ enum{
 
 - (CGRect)getPushViewFrameScaleFit {
     
-    UIImageView *imageView = self.imageViewArr[middle];
+    UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
     if (!imageView.image) {
         [imageView setImage:[self getPushImage]];
     }
@@ -627,14 +640,8 @@ enum{
 
 - (UIImage *)getPushImage {
     UIImage *image = nil;
-    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:imageAtIndex:targetSize:updateImage:)]) {
-        NSInteger page = _page;
-        image = [_delegate imageGallery:self imageAtIndex:_page targetSize:kTargetSize updateImage:^(UIImage * _Nonnull image) {
-            if (self->_page == page) {
-                UIImageView *imageView = self.imageViewArr[middle];
-                imageView.image = image;
-            }
-        }];
+    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:thumbnailAtIndex:targetSize:)]) {
+        image = [_delegate imageGallery:self thumbnailAtIndex:_page targetSize:kTargetSize];
     }
     if (!image) {
         image = _placeHolder;
@@ -655,17 +662,39 @@ enum{
     return CGRectZero;
 }
 
+- (void)loadLargeImageForCurrentPage {
+    NSInteger page = self.page;
+    UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
+    
+    NSInteger count = [self getCountWithSetContentSize:NO];
+    if (page >= count || page < 0) {
+        imageView.image = nil;
+    }
+    
+    UIImage *image = [self.delegate imageGallery:self imageAtIndex:page targetSize:kTargetSize updateImage:^(UIImage * _Nonnull image) {
+        if (image && self.page == page) {
+            UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
+            imageView.image = image;
+            imageView.frame = [self getImageViewFrameWithImage:image];
+        }
+    }];
+    if (image) {
+        imageView.image = image;
+        imageView.frame = [self getImageViewFrameWithImage:image];
+    }
+}
+
 #pragma mark - UI Event
 
 - (void)showImageGalleryAtIndex:(NSInteger)Index fatherViewController:(UIViewController *)viewController {
-    if (self.isPush == pushing) {
+    if (self.pushState == RGImageGalleryPushStatePushing) {
         return;
     }
     _page       =   Index;
     _oldPage    =   Index;
     _hideTopBar = NO;
     _hideToolBar= NO;
-    self.isPush =   pushing;
+    self.pushState =   RGImageGalleryPushStatePushing;
     
     //Load Visiable Image
     [self setMiddleImageViewForPushWithScale:NO];
@@ -675,14 +704,14 @@ enum{
 }
 
 - (void)showImageGalleryWithPingInteractionController:(IGInteractionController *)interactionController {
-    if (self.isPush == pushing) {
+    if (self.pushState == RGImageGalleryPushStatePushing) {
         return;
     }
     _page       =   interactionController.index;
     _oldPage    =   interactionController.index;
     _hideTopBar = NO;
     _hideToolBar = NO;
-    self.isPush =   pushing;
+    self.pushState =   RGImageGalleryPushStatePushing;
     
     //Show ImageGallery ViewController
     [self pushSelfByFatherViewController:interactionController.fromVC];
@@ -712,7 +741,7 @@ enum{
 }
 
 - (void)hide:(BOOL)hide topbarWithAnimateDuration:(NSTimeInterval)duration backgroundChange:(BOOL)change {
-    if (self.isPush == pushed) {
+    if (self.pushState == RGImageGalleryPushStatePushed) {
         dispatch_async(dispatch_get_main_queue(), ^{
             void (^animate)(void) = ^{
                 if (self.navigationController) {
@@ -795,7 +824,7 @@ enum{
         self.hidesBottomBarWhenPushed = YES;
         [viewControllerF.navigationController.navigationBar setTranslucent:YES];
         if (self.barBackgroundImage == nil && _delegate && [_delegate respondsToSelector:@selector(backgroundImageForImageGalleryBar:)]) {
-            self.barBackgroundImage = [ImageGallery imageForTranslucentNavigationBar:viewControllerF.navigationController.navigationBar backgroundImage:[_delegate backgroundImageForImageGalleryBar:self]];
+            self.barBackgroundImage = [RGImageGallery imageForTranslucentNavigationBar:viewControllerF.navigationController.navigationBar backgroundImage:[_delegate backgroundImageForImageGalleryBar:self]];
         }
         if (self.barBackgroundImage != nil){
             [viewControllerF.navigationController.navigationBar setBackgroundImage:self.barBackgroundImage forBarMetrics:UIBarMetricsDefault];
@@ -839,7 +868,7 @@ enum{
 #pragma mark - UIscrollview delegate
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    if(self.BgScrollView == scrollView) {
+    if(self.bgScrollView == scrollView) {
         CGFloat scrollviewW =  scrollView.frame.size.width;
         CGFloat x = scrollView.contentOffset.x;
         _page = (x + scrollviewW / 2) /scrollviewW;
@@ -847,8 +876,8 @@ enum{
             
             //change Left's Left's View
             if (_page > _oldPage) {
-                UIScrollView *changeScView = self.scrollViewArr[leftleft];
-                UIImageView  *changeImageView = self.imageViewArr[leftleft];
+                UIScrollView *changeScView = self.scrollViewArr[0];
+                UIImageView  *changeImageView = self.imageViewArr[0];
                 
                 [self.scrollViewArr removeObject:changeScView];
                 [self.scrollViewArr addObject:changeScView];
@@ -857,11 +886,11 @@ enum{
                 [self.imageViewArr addObject:changeImageView];
                 
                 CGRect rect = changeScView.frame;
-                rect.origin.x = (_page+middle)*pageWidth;
+                rect.origin.x = (_page+RGIGViewIndexM)*pageWidth;
                 changeScView.frame  = rect;
                 
-                [self requestImage:changeImageView withScrollView:changeScView atPage:_page+middle];
-                [self setTitle];
+                [self loadThumbnail:changeImageView withScrollView:changeScView atPage:_page+RGIGViewIndexM];
+                [self loadInfoWhenPageChanged:YES];
                 if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
                     [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
                 }
@@ -869,19 +898,19 @@ enum{
                 
             } else if (_page < _oldPage) { //change Right's Right's View
                 
-                UIScrollView *changeScView = self.scrollViewArr[rightright];
-                UIImageView  *changeImageView = self.imageViewArr[rightright];
+                UIScrollView *changeScView = self.scrollViewArr[RGIGViewIndexCount-1];
+                UIImageView  *changeImageView = self.imageViewArr[RGIGViewIndexCount-1];
                 [self.scrollViewArr removeObject:changeScView];
-                [self.scrollViewArr insertObject:changeScView atIndex:leftleft];
+                [self.scrollViewArr insertObject:changeScView atIndex:0];
                 
                 [self.imageViewArr removeObject:changeImageView];
-                [self.imageViewArr insertObject:changeImageView atIndex:leftleft];
+                [self.imageViewArr insertObject:changeImageView atIndex:0];
 
                 CGRect rect = changeScView.frame;
-                rect.origin.x = (_page-middle)*pageWidth;
+                rect.origin.x = (_page-RGIGViewIndexM)*pageWidth;
                 changeScView.frame  = rect;
-                [self requestImage:changeImageView withScrollView:changeScView atPage:_page-middle];
-                [self setTitle];
+                [self loadThumbnail:changeImageView withScrollView:changeScView atPage:_page-RGIGViewIndexM];
+                [self loadInfoWhenPageChanged:YES];
                 if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
                     [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
                 }
@@ -897,29 +926,18 @@ enum{
     if ([gestureRecognizer.view isKindOfClass:[UIBigButton class]]) {
         return NO;
     }
-    if (gestureRecognizer.view == _BgScrollView && [otherGestureRecognizer.view isKindOfClass:[UIBigButton class]]) {
+    if (gestureRecognizer.view == _bgScrollView && [otherGestureRecognizer.view isKindOfClass:[UIBigButton class]]) {
         return NO;
     }
-    if (gestureRecognizer.view == _BgScrollView && self.navigationControllerDelegate.interactive) {
+    if (gestureRecognizer.view == _bgScrollView && self.navigationControllerDelegate.interactive) {
         return NO;
     }
     return YES;
 }
 
 #pragma mark - tool function
--(void)deleteItem{
-    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:selecteDeleteImageAtIndex:)]) {
-        [_delegate imageGallery:self selecteDeleteImageAtIndex:_page];
-    }
-}
 
--(void)shareItem{
-    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:selecteShareImageAtIndex:)]) {
-        [_delegate imageGallery:self selecteShareImageAtIndex:_page];
-    }
-}
-
--(void)playItem{
+- (void)playItem {
     if (self.navigationControllerDelegate.interactive) {
         return;
     }
@@ -930,18 +948,136 @@ enum{
 
 #pragma mark - public function
 
-- (void)deletePage:(NSInteger)page {
-    if (page != _page) {
-        [self updatePages];
+- (void)updatePages:(NSIndexSet *)pages {
+    if (!pages.count || self.pushState != RGImageGalleryPushStatePushed) {
         return;
     }
-    UIImageView *deleteImageView = self.imageViewArr[middle];
-    UIScrollView *deleteScrollView = self.scrollViewArr[middle];
-    CGPoint point =  self.BgScrollView.contentOffset;
-    NSInteger newCount = [self getCountWithSetContentSize:NO];
+    
+    [pages enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
+        for (RGIGViewIndex i = 0; i < self.scrollViewArr.count; i++) {
+            if (self.page - RGIGViewIndexM + i == idx) {
+                if (i == RGIGViewIndexM) {
+                    [self loadInfoWhenPageChanged:YES];
+                    if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
+                        [self.delegate imageGallery:self middleImageHasChangeAtIndex:idx];
+                    }
+                } else {
+                    [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:idx];
+                }
+            }
+        }
+    }];
+}
+
+- (void)insertPages:(NSIndexSet *)pages {
+    if (!pages.count && self.pushState != RGImageGalleryPushStatePushed) {
+        return;
+    }
+    
+    __block NSInteger forwardPage = 0;
+    __block BOOL containCurrentPage = NO;
+    
+    [pages enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx < self.page) {
+            forwardPage ++;
+        }
+        if (idx == self.page) {
+            containCurrentPage = YES;
+        }
+    }];
+    
+    if (forwardPage > 0) {
+        
+        _page += forwardPage;
+        if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
+            [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
+        }
+        
+        // scroll
+        [self setPositionAtPage:_page ignoreIndex:-1];
+        [self.bgScrollView setDelegate:nil];
+        [self.bgScrollView setContentOffset:CGPointMake(_page*pageWidth, 0) animated:NO];
+        [self.bgScrollView setDelegate:self];
+    }
+    
+    [self getCountWithSetContentSize:YES];
+    
+    for (RGIGViewIndex i = 0; i < self.scrollViewArr.count; i++) {
+        if (i == RGIGViewIndexM) {
+            continue;
+        }
+        // reload insert pages
+        NSInteger oldPage = _oldPage - RGIGViewIndexM + i;
+        if ([pages containsIndex:oldPage]) {
+            NSInteger newPage = _page - RGIGViewIndexM + i;
+            [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:newPage];
+        }
+    }
+    _oldPage = _page;
+}
+
+- (void)deletePages:(NSIndexSet *)pages {
+    if (!pages.count && self.pushState != RGImageGalleryPushStatePushed) {
+        return;
+    }
+    
+    __block NSInteger forwardPage = 0;
+    __block BOOL containCurrentPage = NO;
+    [pages enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx < self.page) {
+            forwardPage ++;
+        }
+        if (idx == self.page) {
+            containCurrentPage = YES;
+        }
+    }];
+    
+    if (forwardPage > 0) {
+        
+        _page -= forwardPage;
+        if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
+            [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
+        }
+        
+        // forward
+        [self setPositionAtPage:_page ignoreIndex:-1];
+        [self.bgScrollView setDelegate:nil];
+        [self.bgScrollView setContentOffset:CGPointMake(_page*pageWidth, 0) animated:NO];
+        [self.bgScrollView setDelegate:self];
+    }
+    
+    NSInteger newCount = [self getCountWithSetContentSize:!containCurrentPage]; // adjust contentsize
+    
+    BOOL needReload = NO;
+    for (RGIGViewIndex i = 0; i < self.scrollViewArr.count; i++) {
+        if (i == RGIGViewIndexM) {
+            continue;
+        }
+        // reload deleted pages
+        NSInteger oldPage = _oldPage - RGIGViewIndexM + i;
+        if (needReload || (!containCurrentPage && oldPage >= newCount) || [pages containsIndex:oldPage]) {
+            
+            NSInteger newPage = _page - RGIGViewIndexM + i;
+            if (containCurrentPage && i > RGIGViewIndexM) {
+                newPage -= 1;
+                needReload = YES;
+            }
+            
+            [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:newPage];
+        }
+    }
+    _oldPage = _page;
+    
+    if (!containCurrentPage) {
+        return;
+    }
+    
+    UIImageView *deleteImageView = self.imageViewArr[RGIGViewIndexM];
+    UIScrollView *deleteScrollView = self.scrollViewArr[RGIGViewIndexM];
+    CGPoint point =  self.bgScrollView.contentOffset;
     if (newCount == 0) {
-        UIImageView *deleteImageView = self.imageViewArr[middle];
-        UIButton *deleteButton = self.playButtonArr[middle];
+        UIImageView *deleteImageView = self.imageViewArr[RGIGViewIndexM];
+        UIButton *deleteButton = self.playButtonArr[RGIGViewIndexM];
         [UIView animateWithDuration:0.3 animations:^{
             deleteImageView.alpha = 0.0f;
             deleteImageView.transform =  CGAffineTransformMakeScale(1.2f, 1.2f);
@@ -956,73 +1092,48 @@ enum{
             [self.navigationController popViewControllerAnimated:YES];
             [self setNavigationBarAndTabBarForImageGallery:NO];
         }];
-    } else if (point.x < pageWidth*newCount) {
+    } else if (point.x < pageWidth*newCount) { // 后面还有数据，把后面的数据挪到前面
+        
         [self.imageViewArr removeObject:deleteImageView];
         [self.imageViewArr addObject:deleteImageView];
         [self.scrollViewArr removeObject:deleteScrollView];
         [self.scrollViewArr addObject:deleteScrollView];
+        
         [UIView animateWithDuration:0.3 animations:^{
             deleteScrollView.alpha = 0.0f;
-            
-            [self setPositionAtPage:self->_page ignoreIndex:rightright];
-        }completion:^(BOOL finished) {
-            deleteScrollView.frame = CGRectMake((self->_page + middle) * pageWidth, 0, kScreenWidth, kScreenHeight);
+            [self setPositionAtPage:self.page ignoreIndex:RGIGViewIndexCount-1];
+        } completion:^(BOOL finished) {
+            deleteScrollView.frame = CGRectMake((self.page + RGIGViewIndexM) * pageWidth, 0, kScreenWidth, kScreenHeight);
             deleteScrollView.alpha = 1.0f;
             deleteImageView.transform =  CGAffineTransformMakeScale(1.0f, 1.0f);
-            [self requestImage:deleteImageView withScrollView:deleteScrollView atPage:self->_page+middle];
+            
             [self getCountWithSetContentSize:YES];
-            [self setTitle];
-            if (self->_delegate && [self->_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
-                [self->_delegate imageGallery:self middleImageHasChangeAtIndex:self->_page];
+            
+            [self loadThumbnail:deleteImageView withScrollView:deleteScrollView atPage:self.page+RGIGViewIndexM];
+            [self loadInfoWhenPageChanged:YES];
+            if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
+                [self.delegate imageGallery:self middleImageHasChangeAtIndex:self.page];
             }
         }];
         
-    } else if (point.x == pageWidth*newCount){
-        point.x -= pageWidth;
+    } else if (point.x >= pageWidth*newCount){
+        point.x = pageWidth*newCount;
         //hide Right's View
         [UIView animateWithDuration:0.3 animations:^{
             deleteScrollView.alpha = 0.0f;
-            deleteImageView.transform =  CGAffineTransformMakeScale(1.2f, 1.2f);
+            deleteImageView.transform =  CGAffineTransformMakeScale(0.5f, 0.5f);
         }completion:^(BOOL finished) {
             deleteImageView.image = nil;
             deleteScrollView.alpha = 1.0f;
             deleteImageView.transform =  CGAffineTransformMakeScale(1.0f, 1.0f);
             [self getCountWithSetContentSize:YES];
-            [self setTitle];
-            if (self->_delegate && [self->_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
-                [self->_delegate imageGallery:self middleImageHasChangeAtIndex:self->_page];
+            [self loadInfoWhenPageChanged:YES];
+            if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
+                [self.delegate imageGallery:self middleImageHasChangeAtIndex:self.page];
             }
         }];
-        [self.BgScrollView setContentOffset:point animated:YES];
+        [self.bgScrollView setContentOffset:point animated:YES];
     }
-}
-
-- (void)updatePages {
-    if (self.isPush != pushed) {
-        return;
-    }
-    NSInteger oldCount = self.BgScrollView.contentSize.width/pageWidth;
-    NSInteger newCount = [self getCountWithSetContentSize:YES];
-    NSInteger addCount = newCount - oldCount;
-    _page += addCount;
-    [self setTitle];
-    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
-        [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
-    }
-    //Load Image
-    for (int i=0; i < self.scrollViewArr.count; i++) {
-        if (_oldPage == _page - middle + i) {
-            //Sequence ScrollViews
-            [self setPositionAtPage:_page ignoreIndex:-1];
-            
-            [self.BgScrollView setDelegate:nil];
-            [self.BgScrollView setContentOffset:CGPointMake(_page*pageWidth, 0) animated:NO];
-            [self getCountWithSetContentSize:YES];
-            [self.BgScrollView setDelegate:self];
-        }
-        [self requestImage:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:_page-middle+i];
-    }
-    _oldPage = _page;
 }
 
 - (void)showMessage:(NSString *)message atPercentY:(CGFloat)percentY{
@@ -1167,13 +1278,13 @@ enum{
 
 - (void)pinchGesture:(UIPinchGestureRecognizer *)gesture {
     
-    ImageGallery *imageGallery;
-    if ([self.fromVC isKindOfClass:[ImageGallery class]]) {
-        imageGallery = (ImageGallery *)self.fromVC;
+    RGImageGallery *imageGallery;
+    if ([self.fromVC isKindOfClass:[RGImageGallery class]]) {
+        imageGallery = (RGImageGallery *)self.fromVC;
     }
     
-    if ([self.toVC isKindOfClass:[ImageGallery class]]) {
-        imageGallery = (ImageGallery *)self.toVC;
+    if ([self.toVC isKindOfClass:[RGImageGallery class]]) {
+        imageGallery = (RGImageGallery *)self.toVC;
     }
     
     BOOL selfGesture = gesture == self.gestureRecognizer;
@@ -1194,8 +1305,8 @@ enum{
                 
                 [imageGallery showImageGalleryWithPingInteractionController:self];
                 
-                self.originalFrame = imageGallery.imageViewArr[middle].frame;
-                self.originalCenter = imageGallery.imageViewArr[middle].center;
+                self.originalFrame = imageGallery.imageViewArr[RGIGViewIndexM].frame;
+                self.originalCenter = imageGallery.imageViewArr[RGIGViewIndexM].center;
 
             } else if (!self.transitionDelegate.interactive &&
                        self.operation == UINavigationControllerOperationPop &&
@@ -1253,21 +1364,21 @@ enum{
     
     CGPoint translatedPoint = [gesture translationInView:gesture.view];
     
-    ImageGallery *imageGallery;
-    if ([self.fromVC isKindOfClass:[ImageGallery class]]) {
-        imageGallery = (ImageGallery *)self.fromVC;
+    RGImageGallery *imageGallery;
+    if ([self.fromVC isKindOfClass:[RGImageGallery class]]) {
+        imageGallery = (RGImageGallery *)self.fromVC;
     }
     
-    if ([self.toVC isKindOfClass:[ImageGallery class]]) {
-        imageGallery = (ImageGallery *)self.toVC;
+    if ([self.toVC isKindOfClass:[RGImageGallery class]]) {
+        imageGallery = (RGImageGallery *)self.toVC;
     }
     
     BOOL selfGesture = gesture == self.gestureRecognizer;
     switch (gesture.state) {
         case UIGestureRecognizerStateBegan: {
             if (self.operation == UINavigationControllerOperationPop) {
-                self.originalFrame = imageGallery.imageViewArr[middle].frame;
-                self.originalCenter = imageGallery.imageViewArr[middle].center;
+                self.originalFrame = imageGallery.imageViewArr[RGIGViewIndexM].frame;
+                self.originalCenter = imageGallery.imageViewArr[RGIGViewIndexM].center;
                 if (!self.transitionDelegate.interactive) {
                     self.gestureRecognizer = gesture;
                     self.transitionDelegate.interactionController = self;
@@ -1279,8 +1390,8 @@ enum{
             if (self.operation == UINavigationControllerOperationPush) {
                 if (!self.transitionDelegate.interactive) {
                     self.gestureRecognizer = gesture;
-                    self.originalFrame = imageGallery.imageViewArr[middle].frame;
-                    self.originalCenter = imageGallery.imageViewArr[middle].center;
+                    self.originalFrame = imageGallery.imageViewArr[RGIGViewIndexM].frame;
+                    self.originalCenter = imageGallery.imageViewArr[RGIGViewIndexM].center;
                 }
             }
             break;
@@ -1361,12 +1472,12 @@ enum{
     self.transitionDelegate.operateSucceed = succeed;
     self.transitionDelegate.interactive = NO;
     
-    ImageGallery *imageGallery = nil;
-    if ([self.fromVC isKindOfClass:[ImageGallery class]]) {
-        imageGallery = (ImageGallery *)self.fromVC;
+    RGImageGallery *imageGallery = nil;
+    if ([self.fromVC isKindOfClass:[RGImageGallery class]]) {
+        imageGallery = (RGImageGallery *)self.fromVC;
     }
-    if ([self.toVC isKindOfClass:[ImageGallery class]]) {
-        imageGallery = (ImageGallery *)self.toVC;
+    if ([self.toVC isKindOfClass:[RGImageGallery class]]) {
+        imageGallery = (RGImageGallery *)self.toVC;
     }
     
     if (succeed) {
@@ -1449,16 +1560,17 @@ enum{
     switch (_operation) {
         case UINavigationControllerOperationPush:{
             UIView *containerView       = [transitionContext containerView];
-            ImageGallery *toVC          = [transitionContext viewControllerForKey:UITransitionContextToViewControllerKey];
+            RGImageGallery *toVC          = [transitionContext viewControllerForKey:UITransitionContextToViewControllerKey];
             UIView *toView              = SYSTEM_LESS_THAN(@"8")?toVC.view:[transitionContext viewForKey:UITransitionContextToViewKey];
             UIViewController *fromVC    = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
             NSTimeInterval duration     = [self transitionDuration:transitionContext];
             
-            UIView *blankView = [[UIView alloc] initWithFrame:[toVC getPushViewFrame]];
-            blankView.backgroundColor = fromVC.view.backgroundColor;
-            [fromVC.view addSubview:blankView];
-            
             [containerView addSubview:toView];
+            
+            RGIMGalleryTransitionCompletion com = nil;
+            if ([toVC.delegate respondsToSelector:@selector(imageGallery:willBePushedWithParentViewController:)]) {
+                com = [toVC.delegate imageGallery:toVC willBePushedWithParentViewController:fromVC];
+            }
             
             [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
             [UIView animateKeyframesWithDuration:duration delay:0.0 options:UIViewKeyframeAnimationOptionCalculationModeLinear animations:^{
@@ -1470,12 +1582,20 @@ enum{
             } completion:^(BOOL finished) {
                 
                 BOOL operateSucceed = self.transitionDelegate.operateSucceed;
+                
+                if (operateSucceed) {
+                    [toVC loadLargeImageForCurrentPage];
+                }
+                
+                if (com) {
+                    com(operateSucceed);
+                }
+                
                 CGFloat leftTime = self.transitionDelegate.leftProgress * duration;
                 
                 [toVC setNavigationBarAndTabBarForImageGallery:operateSucceed];
                 
                 void (^operateBlock)(BOOL operateSucceed) = ^(BOOL operateSucceed) {
-                    [blankView removeFromSuperview];
                     [transitionContext completeTransition:operateSucceed];
                     if (!operateSucceed) {
                         fromVC.navigationController.delegate = nil;
@@ -1494,7 +1614,7 @@ enum{
         }
         case UINavigationControllerOperationPop:{
             UIView *containerView       = [transitionContext containerView];
-            ImageGallery *fromVC        = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
+            RGImageGallery *fromVC        = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
             UIViewController *toVC      = [transitionContext viewControllerForKey:UITransitionContextToViewControllerKey];
             toVC.view.frame = [UIScreen mainScreen].bounds;
             
@@ -1505,13 +1625,9 @@ enum{
             [containerView insertSubview:toView belowSubview:fromView];
             [fromView bringSubviewToFront:toView];
             
-            UIView *blankView = [[UIView alloc] initWithFrame:[fromVC getPushViewFrame]];
-            blankView.backgroundColor = toVC.view.backgroundColor;
-            [toView addSubview:blankView];
-            
-            RGBackCompletion com = nil;
-            if ([fromVC.delegate respondsToSelector:@selector(imageGallery:willBackToParentViewController:)]) {
-                com = [fromVC.delegate imageGallery:fromVC willBackToParentViewController:toVC];
+            RGIMGalleryTransitionCompletion com = nil;
+            if ([fromVC.delegate respondsToSelector:@selector(imageGallery:willPopToParentViewController:)]) {
+                com = [fromVC.delegate imageGallery:fromVC willPopToParentViewController:toVC];
             }
             
             [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
@@ -1529,7 +1645,6 @@ enum{
             } completion:^(BOOL finished) {
                 [fromVC setNavigationBarAndTabBarForImageGallery:!self.transitionDelegate.operateSucceed];
                 if (self.transitionDelegate.operateSucceed) {
-                    [blankView removeFromSuperview];
                     toVC.navigationController.delegate = nil;
                     fromVC.navigationController.delegate = nil;
                     [transitionContext completeTransition:YES];
@@ -1538,7 +1653,6 @@ enum{
                         com(YES);
                     }
                 } else {
-                    [blankView removeFromSuperview];
                     [transitionContext completeTransition:NO];
                     if (com) {
                         com(NO);
@@ -1552,7 +1666,7 @@ enum{
     }
 }
 
-- (void)addKeyFrameAnimationOnCellPushToVC:(ImageGallery *)toVC duration:(NSTimeInterval)duration {
+- (void)addKeyFrameAnimationOnCellPushToVC:(RGImageGallery *)toVC duration:(NSTimeInterval)duration {
     [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
         [UIView animateWithDuration:duration delay:0 usingSpringWithDamping:DampingRatio initialSpringVelocity:Velocity options:UIViewAnimationOptionCurveEaseInOut animations:^{
             [toVC setMiddleImageViewWhenPushFinished];
@@ -1560,13 +1674,13 @@ enum{
     }];
 }
 
-- (void)addKeyFrameAnimationOnCellPopFromVC:(ImageGallery *)fromVC duration:(NSTimeInterval)duration {
+- (void)addKeyFrameAnimationOnCellPopFromVC:(RGImageGallery *)fromVC duration:(NSTimeInterval)duration {
     [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
         [fromVC setMiddleImageViewWhenPopFinished];
     }];
 }
 
-- (void)addkeyFrameAnimationForBackgroundColorInPushToVC:(ImageGallery *)toVC duration:(NSTimeInterval)duration {
+- (void)addkeyFrameAnimationForBackgroundColorInPushToVC:(RGImageGallery *)toVC duration:(NSTimeInterval)duration {
     [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
     [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
         [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:1]];
@@ -1579,7 +1693,7 @@ enum{
     }];
 }
 
-- (void)addkeyFrameAnimationForBarFrom:(ImageGallery *)imageGallery isPush:(BOOL)isPush duration:(NSTimeInterval)duration {
+- (void)addkeyFrameAnimationForBarFrom:(RGImageGallery *)imageGallery isPush:(BOOL)isPush duration:(NSTimeInterval)duration {
     [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
         if (isPush) {
             [imageGallery hide:NO toolbarWithAnimateDuration:0];

@@ -101,8 +101,8 @@
 		E6D3BAE222F40DA600A6E595 /* 8bit.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6D3BAE022F40DA600A6E595 /* 8bit.jpg */; };
 		E6D3BAE422F4123300A6E595 /* 8bit2.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6D3BAE322F4123300A6E595 /* 8bit2.jpg */; };
 		E6D3BAE522F4123300A6E595 /* 8bit2.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6D3BAE322F4123300A6E595 /* 8bit2.jpg */; };
-		E6D3BAE922F5326200A6E595 /* ImageGallery.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAE722F5326200A6E595 /* ImageGallery.m */; };
-		E6D3BAEA22F5326200A6E595 /* ImageGallery.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAE722F5326200A6E595 /* ImageGallery.m */; };
+		E6D3BAE922F5326200A6E595 /* RGImageGallery.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAE722F5326200A6E595 /* RGImageGallery.m */; };
+		E6D3BAEA22F5326200A6E595 /* RGImageGallery.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAE722F5326200A6E595 /* RGImageGallery.m */; };
 		E6D3BAF122F5B55300A6E595 /* UIImageView+RGGif.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAF022F5B55300A6E595 /* UIImageView+RGGif.m */; };
 		E6D3BAF222F5B55300A6E595 /* UIImageView+RGGif.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAF022F5B55300A6E595 /* UIImageView+RGGif.m */; };
 		E6E05AD7209C358C00C54A24 /* chatBg_1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */; };
@@ -225,8 +225,8 @@
 		E6D3BADD22F40AFF00A6E595 /* fire.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = fire.gif; sourceTree = "<group>"; };
 		E6D3BAE022F40DA600A6E595 /* 8bit.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 8bit.jpg; sourceTree = "<group>"; };
 		E6D3BAE322F4123300A6E595 /* 8bit2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 8bit2.jpg; sourceTree = "<group>"; };
-		E6D3BAE722F5326200A6E595 /* ImageGallery.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ImageGallery.m; sourceTree = "<group>"; };
-		E6D3BAE822F5326200A6E595 /* ImageGallery.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImageGallery.h; sourceTree = "<group>"; };
+		E6D3BAE722F5326200A6E595 /* RGImageGallery.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RGImageGallery.m; sourceTree = "<group>"; };
+		E6D3BAE822F5326200A6E595 /* RGImageGallery.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RGImageGallery.h; sourceTree = "<group>"; };
 		E6D3BAEF22F5B55300A6E595 /* UIImageView+RGGif.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIImageView+RGGif.h"; sourceTree = "<group>"; };
 		E6D3BAF022F5B55300A6E595 /* UIImageView+RGGif.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIImageView+RGGif.m"; sourceTree = "<group>"; };
 		E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = chatBg_1.jpg; sourceTree = "<group>"; };
@@ -553,8 +553,8 @@
 		E6D3BAE622F5325200A6E595 /* ImageGallery */ = {
 			isa = PBXGroup;
 			children = (
-				E6D3BAE822F5326200A6E595 /* ImageGallery.h */,
-				E6D3BAE722F5326200A6E595 /* ImageGallery.m */,
+				E6D3BAE822F5326200A6E595 /* RGImageGallery.h */,
+				E6D3BAE722F5326200A6E595 /* RGImageGallery.m */,
 			);
 			path = ImageGallery;
 			sourceTree = "<group>";
@@ -814,7 +814,7 @@
 				E6035A17209BF9AB00A6C6CA /* RGBubbleView.m in Sources */,
 				6BD7663B208504E3003FD599 /* main.m in Sources */,
 				E6D3BAD022F2F48900A6E595 /* RGImagePicker.m in Sources */,
-				E6D3BAE922F5326200A6E595 /* ImageGallery.m in Sources */,
+				E6D3BAE922F5326200A6E595 /* RGImageGallery.m in Sources */,
 				6BD7662D208504E3003FD599 /* AppDelegate.m in Sources */,
 				9E72764B2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765520896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
@@ -852,7 +852,7 @@
 				E6035A18209BF9AB00A6C6CA /* RGBubbleView.m in Sources */,
 				6BD766A420850E11003FD599 /* main.m in Sources */,
 				E6D3BAD122F2F48900A6E595 /* RGImagePicker.m in Sources */,
-				E6D3BAEA22F5326200A6E595 /* ImageGallery.m in Sources */,
+				E6D3BAEA22F5326200A6E595 /* RGImageGallery.m in Sources */,
 				6BD766A520850E11003FD599 /* AppDelegate.m in Sources */,
 				9E72764C2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765620896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
