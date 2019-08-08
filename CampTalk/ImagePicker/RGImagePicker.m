@@ -58,12 +58,12 @@
 }
 
 + (void)needLoadWithAsset:(PHAsset *)asset result:(void (^)(BOOL))result {
-    if (asset.rgIsLoaded) {
-        if (result) {
-            result(NO);
-        }
-        return;
-    }
+//    if (asset.rgIsLoaded) {
+//        if (result) {
+//            result(NO);
+//        }
+//        return;
+//    }
     
     void(^oldMethod)(void) = ^{
         PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
@@ -77,7 +77,7 @@
         [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:orSize contentMode:PHImageContentModeAspectFill options:options resultHandler:^(UIImage * _Nullable image, NSDictionary * _Nullable info) {
             BOOL isLoaded = ![info[PHImageResultIsDegradedKey] boolValue] && image;
             needLoad = !isLoaded;
-            asset.rgIsLoaded = isLoaded;
+//            asset.rgIsLoaded = isLoaded;
             if (result) {
                 result(needLoad);
             }
@@ -108,7 +108,7 @@
                     if (result) {
                         dispatch_async(dispatch_get_main_queue(), ^{
                             BOOL needLoad = error || !hasData;
-                            asset.rgIsLoaded = !needLoad;
+//                            asset.rgIsLoaded = !needLoad;
                             result(needLoad);
                         });
                     }
@@ -166,9 +166,9 @@
     void(^callBackIfNeed)(NSData *data, NSError *error) = ^(NSData *data, NSError *error) {
         if (completion && (data.length || error)) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (networkAccessAllowed && data.length) {
-                    asset.rgIsLoaded = YES;
-                }
+//                if (networkAccessAllowed && data.length) {
+//                    asset.rgIsLoaded = YES;
+//                }
                 completion(data, error);
             });
         }

@@ -13,6 +13,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 extern NSNotificationName RGPHAssetLoadStatusHasChanged;
+extern NSNotificationName RGImagePickerCachePickPhotosHasChanged;
 
 @class RGImageAlbumListViewController;
 
@@ -20,7 +21,7 @@ extern NSNotificationName RGPHAssetLoadStatusHasChanged;
 
 @property (nonatomic, assign) CGFloat rgLoadLargeImageProgress;
 
-@property (nonatomic, assign) BOOL rgIsLoaded;
+//@property (nonatomic, assign) BOOL rgIsLoaded;
 
 @property (nonatomic, assign) PHImageRequestID rgRequestId;
 
@@ -36,11 +37,11 @@ extern NSNotificationName RGPHAssetLoadStatusHasChanged;
 
 @property (nonatomic, copy) RGImagePickResult pickResult;
 
-- (void)addCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset;
-- (void)removeCachePhotoForAsset:(NSArray <PHAsset *> *)assets;
+// thumbnail
+- (void)addThumbCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset;
+- (void)removeThumbCachePhotoForAsset:(NSArray <PHAsset *> *)assets;
 
-//- (UIImage * _Nullable)imageForAsset:(PHAsset *)asset;
-
+// large image
 - (UIImage *_Nullable)imageForAsset:(PHAsset *)asset
                           onlyCache:(BOOL)onlyCache
                            syncLoad:(BOOL)syncLoad
@@ -48,9 +49,12 @@ extern NSNotificationName RGPHAssetLoadStatusHasChanged;
                          targetSize:(CGSize)targetSize
                          completion:(void(^_Nullable)(UIImage *image))completion;
 
-//- (void)addCacheLoadedStatusForAsset:(PHAsset *)asset;
-//- (BOOL)isLoadedStatusForAsset:(PHAsset *)asset;
+// load status
+- (void)setLoadStatusCache:(BOOL)loaded forAsset:(PHAsset *)asset;
+- (BOOL)loadStatusCacheForAsset:(PHAsset *)asset;
+- (void)requestLoadStatusWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result;
 
+// pick photo
 - (void)setPhotos:(NSArray <PHAsset *> *)phassets;
 - (void)addPhotos:(NSArray <PHAsset *> *)phassets;
 - (void)removePhotos:(NSArray <PHAsset *> *)phassets;
@@ -59,6 +63,8 @@ extern NSNotificationName RGPHAssetLoadStatusHasChanged;
 - (BOOL)isFull;
 
 - (void)callBack:(UIViewController *)viewController;
+
+- (void)showPickerPhotosWithParentViewController:(UIViewController *)viewController;
 
 @end
 

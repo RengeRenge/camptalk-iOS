@@ -150,7 +150,7 @@ static PHImageRequestOptions *__ctImagePickerOptions;
             return;
         }
         self.imageView.image = result;
-        [RGImagePickerCell needLoadWithAsset:asset result:^(BOOL needLoadWithAsset) {
+        [self.cache requestLoadStatusWithAsset:asset result:^(BOOL needLoadWithAsset) {
             if (![self isCurrentAsset:asset]) {
                 return;
             }
@@ -184,7 +184,7 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     self.selectedLayer.strokeEnd = 0;
     [CATransaction commit];
     
-    [cache imageForAsset:asset onlyCache:NO syncLoad:NO allowNet:NO targetSize:targetSize completion:^(UIImage * _Nonnull image) {
+    [cache imageForAsset:asset onlyCache:NO syncLoad:NO allowNet:YES targetSize:targetSize completion:^(UIImage * _Nonnull image) {
         didLoadImage(image);
     }];
 }
@@ -193,11 +193,12 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     return self.asset == asset || [self.asset.localIdentifier isEqualToString:asset.localIdentifier];
 }
 
-+ (void)needLoadWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result {
-    [RGImagePicker needLoadWithAsset:asset result:result];
-}
-
-+ (void)loadOriginalWithAsset:(PHAsset *)asset updateCell:(RGImagePickerCell * _Nullable)cell collectionView:(UICollectionView *)collectionView progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable, NSError * _Nullable))completion {
++ (void)loadOriginalWithAsset:(PHAsset *)asset
+                        cache:(RGImagePickerCache *)cache
+                   updateCell:(RGImagePickerCell * _Nullable)cell
+               collectionView:(UICollectionView *_Nullable)collectionView 
+              progressHandler:(void (^ _Nullable)(double))progressHandler
+                   completion:(void (^ _Nullable)(NSData * _Nullable, NSError * _Nullable))completion {
     __block RGImagePickerCell *bCell = cell;
     [RGImagePicker loadResourceFromAsset:asset progressHandler:^(double progress) {
         if (progressHandler) {
@@ -215,6 +216,10 @@ static PHImageRequestOptions *__ctImagePickerOptions;
         }
         bCell.selectedLayer.strokeEnd = progress;
     } completion:^(NSData * _Nullable imageData, NSError * _Nullable error) {
+        
+        BOOL isLoaded = (error == nil && imageData.length);
+        [cache setLoadStatusCache:isLoaded forAsset:asset];
+        
         if (completion) {
             completion(imageData, error);
         }
@@ -228,14 +233,13 @@ static PHImageRequestOptions *__ctImagePickerOptions;
                 }
             }];
         }
+        
         if (error) {
-            asset.rgIsLoaded = NO;
             bCell.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
         } else {
-            asset.rgIsLoaded = YES;
             bCell.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.0];
         }
-        bCell.selectedLayer.strokeEnd = asset.rgIsLoaded ? 1 : 0;
+        bCell.selectedLayer.strokeEnd = isLoaded ? 1 : 0;
     }];
 }
 

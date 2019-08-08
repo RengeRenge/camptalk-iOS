@@ -95,7 +95,15 @@ typedef enum : NSUInteger {
 
 @end
 
-@interface RGImageGallery()
+@interface RGImageGallery() <UIScrollViewDelegate, UIAlertViewDelegate, UIGestureRecognizerDelegate>
+
+@property (strong,nonatomic) NSMutableArray<UIScrollView *>  *scrollViewArr;
+@property (strong,nonatomic) NSMutableArray<UIImageView *>  *imageViewArr;
+@property (strong,nonatomic) UIScrollView    *bgScrollView;
+
+@property (assign,nonatomic) NSInteger      oldPage;
+
+
 @property (nonatomic, strong) IGNavigationControllerDelegate *navigationControllerDelegate;
 @property (nonatomic, strong) UILabel        *titleLabel;
 
@@ -109,12 +117,7 @@ typedef enum : NSUInteger {
 @property (nonatomic, strong) UIImage         *barBackgroundImage;
 @property (nonatomic, strong) UIActivityIndicatorView *activityIndicatorView;
 
-@property (nonatomic, assign) id  viewControllerF;
-@property (nonatomic, copy) UIColor *barTintColorF;
-@property (nonatomic, copy) UIColor *tintColorF;
-@property (nonatomic, assign) BOOL automaticallyAdjustsScrollViewInsetsF;
-@property (nonatomic, assign) BOOL tabbarTranslucentF;
-@property (nonatomic, assign) BOOL navigationTranslucentF;
+@property (nonatomic, weak) id  viewControllerF;
 
 @property (nonatomic, assign) BOOL hideTopBar;
 @property (nonatomic, assign) BOOL hideToolBar;
@@ -125,14 +128,16 @@ typedef enum : NSUInteger {
 
 @implementation RGImageGallery
 
+@synthesize pushState = _pushState;
+
 - (instancetype)initWithPlaceHolder:(UIImage *)placeHolder andDelegate:(id)delegate{
     self = [super init];
     if(self){
         self.delegate       =   delegate;
         self.placeHolder    =   placeHolder;
         self.barBackgroundImage = nil;
-        self.page           =   0;
-        self.pushState         =   RGImageGalleryPushStateNoPush;
+        _page           =   0;
+        _pushState         =   RGImageGalleryPushStateNoPush;
     }
     return self;
 }
@@ -146,20 +151,20 @@ enum{
     rightFix
 };
 
--(void)viewWillAppear:(BOOL)animated{
+- (void)viewWillAppear:(BOOL)animated{
     [super viewWillAppear:animated];
     
-    if (self.pushState == RGImageGalleryPushStatePushing) {
+    if (!self.pushFromView || self.pushState == RGImageGalleryPushStatePushing) {
         [self getCountWithSetContentSize:YES];
 
         //Load OtherImage
         for (int i=0; i < self.scrollViewArr.count; i++) {
-            if (i != RGIGViewIndexM) {
+            if (i != RGIGViewIndexM || !self.pushFromView) {
                 [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:_page-RGIGViewIndexM+i];
             }
         }
-        [self setTitle];
-        [self configToolBarItem];
+        [self reloadTitle];
+        [self reloadToolBarItem];
         
         //Sequence ScrollViews
         [self setPositionAtPage:_page ignoreIndex:-1];
@@ -169,14 +174,16 @@ enum{
         [self getCountWithSetContentSize:YES];
         [self.bgScrollView setDelegate:self];
     }
+    if (!self.pushFromView) {
+        [self hide:NO toolbarWithAnimateDuration:0];
+    }
     [self hide:self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
 }
 
 - (void)viewDidLoad{
     [super viewDidLoad];
-    [self.view setBackgroundColor:[UIColor clearColor]];
+    [self.view setBackgroundColor:[UIColor whiteColor]];
     [self initImageScrollViewArr];
-    [self setBackItem];
     [self.view addSubview:self.bgScrollView];
     _hideTopBar = NO;
     _hideToolBar = NO;
@@ -220,9 +227,15 @@ enum{
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    self.navigationController.delegate = self.navigationControllerDelegate;
-    [self.navigationControllerDelegate addPinchGestureOnView:self.view FromVC:self toVC:_viewControllerF].operation = UINavigationControllerOperationPop;
-    self.pushState = RGImageGalleryPushStatePushed;
+    
+    [self loadLargeImageForCurrentPage];
+    [self __setNavigationBarAndTabBarForImageGallery:YES];
+    
+    if (self.pushFromView) {
+        self.navigationController.delegate = self.navigationControllerDelegate;
+        [self.navigationControllerDelegate addPinchGestureOnView:self.view FromVC:self toVC:_viewControllerF].operation = UINavigationControllerOperationPop;
+    }
+    _pushState = RGImageGalleryPushStatePushed;
     [self hide:!self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
     [self hide:self.hideTopBar topbarWithAnimateDuration:0 backgroundChange:NO];
 }
@@ -238,11 +251,11 @@ enum{
 
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
-    self.pushState = RGImageGalleryPushStateNoPush;
+    _pushState = RGImageGalleryPushStateNoPush;
 }
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
+- (void)viewWillLayoutSubviews {
+    [super viewWillLayoutSubviews];
     if (CGSizeEqualToSize(_lastSize, self.view.bounds.size)) {
         return;
     }
@@ -254,10 +267,7 @@ enum{
     [self setPositionAtPage:_page ignoreIndex:-1];
     
     // Update ImageView Size
-    for (int i=0; i<self.scrollViewArr.count; i++) {
-        if (self.pushState == RGImageGalleryPushStatePushing && i == RGIGViewIndexM) {
-            continue;
-        }
+    for (int i=0; i<self.scrollViewArr.count && self.pushState != RGImageGalleryPushStatePushing; i++) {
         UIImageView *imageView = self.imageViewArr[i];
         CGRect rect = [self getImageViewFrameWithImage:imageView.image];
         [imageView setFrame:rect];
@@ -285,6 +295,10 @@ enum{
         [_bgScrollView setShowsHorizontalScrollIndicator:NO];
         _bgScrollView.bounces = YES;
         
+        if (@available(iOS 11.0, *)) {
+            _bgScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        }
+        
         UITapGestureRecognizer *singleTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(hideBar:)];
         singleTapGesture.cancelsTouchesInView = NO;
         singleTapGesture.delegate = self;
@@ -294,13 +308,6 @@ enum{
         [_bgScrollView addGestureRecognizer:singleTapGesture];
     }
     return _bgScrollView;
-}
-
-- (void)setBackItem {
-    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithTitle:@"" style:UIBarButtonItemStylePlain target:nil action:nil];
-    if (((UIViewController*)_viewControllerF).navigationItem != nil) {
-        [((UIViewController*)_viewControllerF).navigationItem setBackBarButtonItem:backItem];
-    }
 }
 
 -(UILabel *)titleLabel {
@@ -366,12 +373,14 @@ enum{
 }
 
 - (void)loadInfoWhenPageChanged:(BOOL)loadCurrentImage {
-    [self setTitle];
-    [self configToolBarItem];
-    [self loadLargeImageForCurrentPage];
+    [self reloadTitle];
+    [self reloadToolBarItem];
+    if (loadCurrentImage) {
+        [self loadLargeImageForCurrentPage];
+    }
 }
 
-- (void)setTitle {
+- (void)reloadTitle {
     NSInteger page = self.page;
     NSInteger count = [self getCountWithSetContentSize:NO];
     if (page >= count || page < 0) {
@@ -379,6 +388,7 @@ enum{
         return;
     }
     if (_delegate && [_delegate respondsToSelector:@selector(titleForImageGallery:AtIndex:)]) {
+        self.navigationItem.title = [_delegate titleForImageGallery:self AtIndex:page];
         self.titleLabel.text = [_delegate titleForImageGallery:self AtIndex:page];
         [self.titleLabel sizeToFit];
     }
@@ -387,6 +397,7 @@ enum{
         self.titleLabel.textColor = color;
         self.toolbar.tintColor = color;
     }
+    self.navigationItem.titleView = nil;
     self.navigationItem.titleView = _titleLabel;
 }
 
@@ -503,7 +514,7 @@ enum{
     }
 }
 
-- (void)configToolBarItem {
+- (void)reloadToolBarItem {
     BOOL display = NO;
     
     NSInteger page = self.page;
@@ -596,8 +607,7 @@ enum{
         UIView *view = [_delegate imageGallery:self thumbViewForPushAtIndex:_page];
         //return view.frame;
         //getRect
-        UIWindow *window = [[UIApplication sharedApplication].windows lastObject];
-        rect = [view convertRect:view.bounds toView:window];
+        rect = [view convertRect:view.bounds toView:[self.viewControllerF view]];
     }
     return rect;
 }
@@ -669,6 +679,7 @@ enum{
     NSInteger count = [self getCountWithSetContentSize:NO];
     if (page >= count || page < 0) {
         imageView.image = nil;
+        return;
     }
     
     UIImage *image = [self.delegate imageGallery:self imageAtIndex:page targetSize:kTargetSize updateImage:^(UIImage * _Nonnull image) {
@@ -694,7 +705,7 @@ enum{
     _oldPage    =   Index;
     _hideTopBar = NO;
     _hideToolBar= NO;
-    self.pushState =   RGImageGalleryPushStatePushing;
+    _pushState =   RGImageGalleryPushStatePushing;
     
     //Load Visiable Image
     [self setMiddleImageViewForPushWithScale:NO];
@@ -703,15 +714,15 @@ enum{
     [self pushSelfByFatherViewController:viewController];
 }
 
-- (void)showImageGalleryWithPingInteractionController:(IGInteractionController *)interactionController {
-    if (self.pushState == RGImageGalleryPushStatePushing) {
+- (void)__showImageGalleryWithPingInteractionController:(IGInteractionController *)interactionController {
+    if (self.pushFromView || self.pushState == RGImageGalleryPushStatePushing) {
         return;
     }
     _page       =   interactionController.index;
     _oldPage    =   interactionController.index;
     _hideTopBar = NO;
     _hideToolBar = NO;
-    self.pushState =   RGImageGalleryPushStatePushing;
+    _pushState =   RGImageGalleryPushStatePushing;
     
     //Show ImageGallery ViewController
     [self pushSelfByFatherViewController:interactionController.fromVC];
@@ -792,60 +803,19 @@ enum{
 -(void)pushSelfByFatherViewController:(UIViewController *)viewController {
     _viewControllerF = viewController;
     [_viewControllerF setHidesBottomBarWhenPushed:YES];
-    
-    viewController.navigationController.delegate = self.navigationControllerDelegate;
-    
-    //setTranslucent For origin.y at 0.0f
-    [self setNavigationBarAndTabBarForImageGallery:YES];
+    if (self.pushFromView) {
+        viewController.navigationController.delegate = self.navigationControllerDelegate;
+    }
+    [self __setNavigationBarAndTabBarForImageGallery:YES];
     [viewController.navigationController pushViewController:self animated:YES];
 }
 
-- (void)setNavigationBarAndTabBarForImageGallery:(BOOL)set {
-    UIViewController *viewControllerF = ((UIViewController*)_viewControllerF);
-   if (set) {
-        //record original settings
-       if (viewControllerF.navigationController.navigationBar.translucent) {
-           self.automaticallyAdjustsScrollViewInsetsF = viewControllerF.automaticallyAdjustsScrollViewInsets;
-           self.automaticallyAdjustsScrollViewInsets = NO;
-           return;
-       }
-       
-        if (SYSTEM_LESS_THAN(@"7")) {
-            self.tintColorF = viewControllerF.navigationController.navigationBar.tintColor;
-        } else {
-            self.barTintColorF = viewControllerF.navigationController.navigationBar.barTintColor;
-        }
-        self.automaticallyAdjustsScrollViewInsetsF = viewControllerF.automaticallyAdjustsScrollViewInsets;
-        self.tabbarTranslucentF = viewControllerF.tabBarController.tabBar.translucent;
-        self.navigationTranslucentF = viewControllerF.navigationController.navigationBar.translucent;
-        //set
-        self.automaticallyAdjustsScrollViewInsets = NO;
-        [viewControllerF.tabBarController.tabBar setTranslucent:YES];
-        self.hidesBottomBarWhenPushed = YES;
-        [viewControllerF.navigationController.navigationBar setTranslucent:YES];
-        if (self.barBackgroundImage == nil && _delegate && [_delegate respondsToSelector:@selector(backgroundImageForImageGalleryBar:)]) {
-            self.barBackgroundImage = [RGImageGallery imageForTranslucentNavigationBar:viewControllerF.navigationController.navigationBar backgroundImage:[_delegate backgroundImageForImageGalleryBar:self]];
-        }
-        if (self.barBackgroundImage != nil){
-            [viewControllerF.navigationController.navigationBar setBackgroundImage:self.barBackgroundImage forBarMetrics:UIBarMetricsDefault];
-        }
-    } else {
-        if (viewControllerF.navigationController.navigationBar.translucent) {
-            viewControllerF.automaticallyAdjustsScrollViewInsets = self.automaticallyAdjustsScrollViewInsetsF;
-            return;
-        }
-        if (SYSTEM_LESS_THAN(@"7")) {
-            viewControllerF.navigationController.navigationBar.tintColor = self.tintColorF;
-        } else {
-            viewControllerF.navigationController.navigationBar.barTintColor = self.barTintColorF;
-        }
-        viewControllerF.automaticallyAdjustsScrollViewInsets = self.automaticallyAdjustsScrollViewInsetsF;
-        viewControllerF.tabBarController.tabBar.translucent = self.tabbarTranslucentF;
-        viewControllerF.navigationController.navigationBar.translucent = self.navigationTranslucentF;
-        if (_delegate && [_delegate respondsToSelector:@selector(backgroundImageForParentViewControllerBar)]){
-            [viewControllerF.navigationController.navigationBar setBackgroundImage:[_delegate backgroundImageForParentViewControllerBar] forBarMetrics:UIBarMetricsDefault];
-        }
+- (void)__setNavigationBarAndTabBarForImageGallery:(BOOL)set {
+    self.automaticallyAdjustsScrollViewInsets = NO;
+    if (![self.delegate respondsToSelector:@selector(configNavigationBarForImageGallery:imageGallery:)]) {
+        return;
     }
+    [self.delegate configNavigationBarForImageGallery:set imageGallery:self];
 }
 
 - (void)setLoading:(BOOL)loading {
@@ -890,7 +860,7 @@ enum{
                 changeScView.frame  = rect;
                 
                 [self loadThumbnail:changeImageView withScrollView:changeScView atPage:_page+RGIGViewIndexM];
-                [self loadInfoWhenPageChanged:YES];
+                [self loadInfoWhenPageChanged:NO];
                 if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
                     [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
                 }
@@ -910,7 +880,7 @@ enum{
                 rect.origin.x = (_page-RGIGViewIndexM)*pageWidth;
                 changeScView.frame  = rect;
                 [self loadThumbnail:changeImageView withScrollView:changeScView atPage:_page-RGIGViewIndexM];
-                [self loadInfoWhenPageChanged:YES];
+                [self loadInfoWhenPageChanged:NO];
                 if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
                     [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
                 }
@@ -918,6 +888,16 @@ enum{
             }
         }
     }
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if (decelerate == NO) {
+        [self scrollViewDidEndDecelerating:scrollView];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    [self loadLargeImageForCurrentPage];
 }
 
 #pragma mark - gesture Delegate
@@ -949,7 +929,7 @@ enum{
 #pragma mark - public function
 
 - (void)updatePages:(NSIndexSet *)pages {
-    if (!pages.count || self.pushState != RGImageGalleryPushStatePushed) {
+    if (!pages.count) {
         return;
     }
     
@@ -970,7 +950,7 @@ enum{
 }
 
 - (void)insertPages:(NSIndexSet *)pages {
-    if (!pages.count && self.pushState != RGImageGalleryPushStatePushed) {
+    if (!pages.count) {
         return;
     }
     
@@ -978,8 +958,9 @@ enum{
     __block BOOL containCurrentPage = NO;
     
     [pages enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
-        if (idx < self.page) {
+        if (idx <= self.page) {
             forwardPage ++;
+            self->_page ++;
         }
         if (idx == self.page) {
             containCurrentPage = YES;
@@ -987,8 +968,6 @@ enum{
     }];
     
     if (forwardPage > 0) {
-        
-        _page += forwardPage;
         if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
             [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
         }
@@ -1001,15 +980,15 @@ enum{
     }
     
     [self getCountWithSetContentSize:YES];
+    [self loadInfoWhenPageChanged:NO];
     
     for (RGIGViewIndex i = 0; i < self.scrollViewArr.count; i++) {
         if (i == RGIGViewIndexM) {
             continue;
         }
         // reload insert pages
-        NSInteger oldPage = _oldPage - RGIGViewIndexM + i;
-        if ([pages containsIndex:oldPage]) {
-            NSInteger newPage = _page - RGIGViewIndexM + i;
+        NSInteger newPage = _page - RGIGViewIndexM + i;
+        if ([pages containsIndex:newPage]) {
             [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:newPage];
         }
     }
@@ -1017,9 +996,14 @@ enum{
 }
 
 - (void)deletePages:(NSIndexSet *)pages {
-    if (!pages.count && self.pushState != RGImageGalleryPushStatePushed) {
+    if (!pages.count) {
         return;
     }
+    
+    NSInteger newCount = [self getCountWithSetContentSize:NO];
+    NSInteger oldCount = self.bgScrollView.contentSize.width / pageWidth;
+    
+    BOOL hasDataAfterCurrentPage = self.page < (oldCount - 1);
     
     __block NSInteger forwardPage = 0;
     __block BOOL containCurrentPage = NO;
@@ -1032,9 +1016,17 @@ enum{
         }
     }];
     
-    if (forwardPage > 0) {
-        
-        _page -= forwardPage;
+    _page -= forwardPage;
+    
+    if (_page > newCount - 1) {
+        _page = newCount - 1;
+        hasDataAfterCurrentPage = NO;
+    }
+    if (_page < 0) {
+        _page = 0;
+    }
+    
+    if (forwardPage > 0 || containCurrentPage) {
         if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
             [_delegate imageGallery:self middleImageHasChangeAtIndex:_page];
         }
@@ -1046,21 +1038,30 @@ enum{
         [self.bgScrollView setDelegate:self];
     }
     
-    NSInteger newCount = [self getCountWithSetContentSize:!containCurrentPage]; // adjust contentsize
+    if (!containCurrentPage) {
+        [self getCountWithSetContentSize:YES]; // adjust contentsize
+        [self loadInfoWhenPageChanged:NO];
+    }
     
-    BOOL needReload = NO;
     for (RGIGViewIndex i = 0; i < self.scrollViewArr.count; i++) {
         if (i == RGIGViewIndexM) {
             continue;
         }
         // reload deleted pages
         NSInteger oldPage = _oldPage - RGIGViewIndexM + i;
-        if (needReload || (!containCurrentPage && oldPage >= newCount) || [pages containsIndex:oldPage]) {
-            
+        if ([pages containsIndex:oldPage]) {
+        
             NSInteger newPage = _page - RGIGViewIndexM + i;
-            if (containCurrentPage && i > RGIGViewIndexM) {
-                newPage -= 1;
-                needReload = YES;
+            if (containCurrentPage) {
+                if (hasDataAfterCurrentPage) {
+                    if (i > RGIGViewIndexM) {
+                        newPage -= 1;
+                    }
+                } else {
+                    if (i < RGIGViewIndexM) {
+                        newPage += 1;
+                    }
+                }
             }
             
             [self loadThumbnail:self.imageViewArr[i] withScrollView:self.scrollViewArr[i] atPage:newPage];
@@ -1074,13 +1075,13 @@ enum{
     
     UIImageView *deleteImageView = self.imageViewArr[RGIGViewIndexM];
     UIScrollView *deleteScrollView = self.scrollViewArr[RGIGViewIndexM];
-    CGPoint point =  self.bgScrollView.contentOffset;
+    
     if (newCount == 0) {
         UIImageView *deleteImageView = self.imageViewArr[RGIGViewIndexM];
         UIButton *deleteButton = self.playButtonArr[RGIGViewIndexM];
         [UIView animateWithDuration:0.3 animations:^{
             deleteImageView.alpha = 0.0f;
-            deleteImageView.transform =  CGAffineTransformMakeScale(1.2f, 1.2f);
+            deleteImageView.transform =  CGAffineTransformMakeScale(0.5f, 0.5f);
             deleteButton.alpha = 0.0f;
         }completion:^(BOOL finished) {
             deleteImageView.image = nil;
@@ -1090,20 +1091,20 @@ enum{
             
             self.navigationController.delegate = nil;
             [self.navigationController popViewControllerAnimated:YES];
-            [self setNavigationBarAndTabBarForImageGallery:NO];
+            [self __setNavigationBarAndTabBarForImageGallery:NO];
         }];
-    } else if (point.x < pageWidth*newCount) { // 后面还有数据，把后面的数据挪到前面
+    } else if (hasDataAfterCurrentPage) { // 后面还有数据，把后面的数据挪到前面
         
-        [self.imageViewArr removeObject:deleteImageView];
-        [self.imageViewArr addObject:deleteImageView];
-        [self.scrollViewArr removeObject:deleteScrollView];
-        [self.scrollViewArr addObject:deleteScrollView];
-        
+        [self.imageViewArr exchangeObjectAtIndex:RGIGViewIndexM withObjectAtIndex:RGIGViewIndexCount - 1];
+        [self.scrollViewArr exchangeObjectAtIndex:RGIGViewIndexM withObjectAtIndex:RGIGViewIndexCount - 1];
+
         [UIView animateWithDuration:0.3 animations:^{
             deleteScrollView.alpha = 0.0f;
-            [self setPositionAtPage:self.page ignoreIndex:RGIGViewIndexCount-1];
+            deleteImageView.transform =  CGAffineTransformMakeScale(0.5f, 0.5f);
+            [self setPositionAtPage:self.page ignoreIndex:RGIGViewIndexCount - 1];
         } completion:^(BOOL finished) {
-            deleteScrollView.frame = CGRectMake((self.page + RGIGViewIndexM) * pageWidth, 0, kScreenWidth, kScreenHeight);
+            [self setPositionAtPage:self.page ignoreIndex:-1];
+            
             deleteScrollView.alpha = 1.0f;
             deleteImageView.transform =  CGAffineTransformMakeScale(1.0f, 1.0f);
             
@@ -1116,23 +1117,29 @@ enum{
             }
         }];
         
-    } else if (point.x >= pageWidth*newCount){
-        point.x = pageWidth*newCount;
-        //hide Right's View
+    } else {
+        
+        [self.imageViewArr exchangeObjectAtIndex:RGIGViewIndexM withObjectAtIndex:0];
+        [self.scrollViewArr exchangeObjectAtIndex:RGIGViewIndexM withObjectAtIndex:0];
+        
         [UIView animateWithDuration:0.3 animations:^{
             deleteScrollView.alpha = 0.0f;
             deleteImageView.transform =  CGAffineTransformMakeScale(0.5f, 0.5f);
-        }completion:^(BOOL finished) {
-            deleteImageView.image = nil;
+            [self setPositionAtPage:self.page ignoreIndex:0];
+        } completion:^(BOOL finished) {
+            [self setPositionAtPage:self.page ignoreIndex:-1];
+            
             deleteScrollView.alpha = 1.0f;
             deleteImageView.transform =  CGAffineTransformMakeScale(1.0f, 1.0f);
+            
             [self getCountWithSetContentSize:YES];
+            
+            [self loadThumbnail:deleteImageView withScrollView:deleteScrollView atPage:self.page-RGIGViewIndexM];
             [self loadInfoWhenPageChanged:YES];
             if (self.delegate && [self.delegate respondsToSelector:@selector(imageGallery:middleImageHasChangeAtIndex:)]) {
                 [self.delegate imageGallery:self middleImageHasChangeAtIndex:self.page];
             }
         }];
-        [self.bgScrollView setContentOffset:point animated:YES];
     }
 }
 
@@ -1201,6 +1208,12 @@ enum{
 @implementation IGNavigationControllerDelegate
 
 - (id<UIViewControllerAnimatedTransitioning>)navigationController:(UINavigationController *)navigationController animationControllerForOperation:(UINavigationControllerOperation)operation fromViewController:(UIViewController *)fromVC toViewController:(UIViewController *)toVC {
+    if (operation == UINavigationControllerOperationPush && [fromVC isKindOfClass:RGImageGallery.class]) {
+        return nil;
+    }
+    if (operation == UINavigationControllerOperationPop && [toVC isKindOfClass:RGImageGallery.class]) {
+        return nil;
+    }
     _animationController = [[IGPushAndPopAnimationController alloc] initWithNavigationControllerOperation:operation];
     _animationController.transitionDelegate = self;
     return _animationController;
@@ -1303,7 +1316,7 @@ enum{
                 self.transitionDelegate.interactionController = self;
                 self.transitionDelegate.interactive = YES;
                 
-                [imageGallery showImageGalleryWithPingInteractionController:self];
+                [imageGallery __showImageGalleryWithPingInteractionController:self];
                 
                 self.originalFrame = imageGallery.imageViewArr[RGIGViewIndexM].frame;
                 self.originalCenter = imageGallery.imageViewArr[RGIGViewIndexM].center;
@@ -1583,17 +1596,15 @@ enum{
                 
                 BOOL operateSucceed = self.transitionDelegate.operateSucceed;
                 
-                if (operateSucceed) {
-                    [toVC loadLargeImageForCurrentPage];
-                }
-                
                 if (com) {
                     com(operateSucceed);
                 }
                 
                 CGFloat leftTime = self.transitionDelegate.leftProgress * duration;
                 
-                [toVC setNavigationBarAndTabBarForImageGallery:operateSucceed];
+                if (!operateSucceed) {
+                    [toVC __setNavigationBarAndTabBarForImageGallery:NO];
+                }
                 
                 void (^operateBlock)(BOOL operateSucceed) = ^(BOOL operateSucceed) {
                     [transitionContext completeTransition:operateSucceed];
@@ -1643,7 +1654,7 @@ enum{
                 [self addkeyFrameAnimationForBarFrom:fromVC isPush:NO duration:duration];
                 [self addkeyFrameAnimationForBackgroundColorInPopWithFakeBackground:fromView duration:duration];
             } completion:^(BOOL finished) {
-                [fromVC setNavigationBarAndTabBarForImageGallery:!self.transitionDelegate.operateSucceed];
+                [fromVC __setNavigationBarAndTabBarForImageGallery:!self.transitionDelegate.operateSucceed];
                 if (self.transitionDelegate.operateSucceed) {
                     toVC.navigationController.delegate = nil;
                     fromVC.navigationController.delegate = nil;

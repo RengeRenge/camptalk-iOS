@@ -24,20 +24,18 @@ typedef enum : NSUInteger {
 
 @protocol RGImageGalleryDelegate;
 
-@interface RGImageGallery : UIViewController<UIScrollViewDelegate, UIAlertViewDelegate, UIGestureRecognizerDelegate>
+@interface RGImageGallery : UIViewController
 
-@property (strong,nonatomic) NSMutableArray<UIScrollView *>  *scrollViewArr;
-@property (strong,nonatomic) NSMutableArray<UIImageView *>  *imageViewArr;
-@property (strong,nonatomic) UIScrollView    *bgScrollView;
+@property (assign, nonatomic, readonly) NSInteger page;
 
-@property (assign,nonatomic) RGImageGalleryPushState pushState;
-@property (assign,nonatomic) NSInteger      oldPage;
-@property (assign,nonatomic) NSInteger      page;
-@property (weak,nonatomic) id<RGImageGalleryDelegate> delegate;
+@property (assign, nonatomic) BOOL pushFromView;
+@property (assign, nonatomic, readonly) RGImageGalleryPushState pushState;
+
+@property (weak, nonatomic) id<RGImageGalleryDelegate> delegate;
 
 + (UIImage *)imageForTranslucentNavigationBar:(UINavigationBar *)navigationBar backgroundImage:(UIImage *)image;
 
-- (instancetype)initWithPlaceHolder:(UIImage *)placeHolder andDelegate:(id)delegate;
+- (instancetype)initWithPlaceHolder:(UIImage *_Nullable)placeHolder andDelegate:(id)delegate;
 
 - (void)showImageGalleryAtIndex:(NSInteger)Index fatherViewController:(UIViewController *)viewController;
 
@@ -49,16 +47,14 @@ typedef enum : NSUInteger {
 - (void)insertPages:(NSIndexSet *)pages;
 - (void)deletePages:(NSIndexSet *)pages;
 
-- (void)configToolBarItem;
+- (void)reloadTitle;
+- (void)reloadToolBarItem;
 
 - (void)setLoading:(BOOL)loading;
 
 @end
 
 @protocol RGImageGalleryDelegate <NSObject>
-
-- (UIImage *)backgroundImageForImageGalleryBar:(RGImageGallery *)imageGallery;
-- (UIImage *)backgroundImageForParentViewControllerBar;
 
 - (NSInteger)numOfImagesForImageGallery:(RGImageGallery *)imageGallery;
 - (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForPushAtIndex:(NSInteger)index;
@@ -70,6 +66,8 @@ typedef enum : NSUInteger {
 - (NSString *_Nullable)titleForImageGallery:(RGImageGallery *)imageGallery AtIndex:(NSInteger)index;
 
 @optional
+
+- (void)configNavigationBarForImageGallery:(BOOL)forImageGallery imageGallery:(RGImageGallery *)imageGallery;
 
 - (BOOL)imageGallery:(RGImageGallery *)imageGallery toolBarItemsShouldDisplayForIndex:(NSInteger)index;
 - (NSArray <UIBarButtonItem *> *)imageGallery:(RGImageGallery *)imageGallery toolBarItemsForIndex:(NSInteger)index;
