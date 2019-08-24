@@ -17,9 +17,14 @@ extern NSString *const CTChatTableViewCellId;
 
 @property (weak, nonatomic) IBOutlet CTChatBubbleLabel *chatBubbleLabel;
 
+@property (copy, nonatomic) NSString *cellId;
+
 @property (copy, nonatomic) UIImage *iconImage;
 
 @property (assign, nonatomic) BOOL myDirection;
+
+@property (assign, nonatomic) BOOL displayThumb;
+@property (assign, nonatomic) CGSize thumbPixSize;
 
 + (void)registerForTableView:(UITableView *)tableView;
 
@@ -27,5 +32,7 @@ extern NSString *const CTChatTableViewCellId;
 + (CGFloat)estimatedHeightWithText:(NSString *)string tableView:(UITableView *)tableView;
 
 + (CGFloat)heightWithThumbSize:(CGSize)thumbSize tableView:(UITableView *)tableView;
+
+- (void)lookMe:(void(^)(BOOL flag))completion;
 
 @end

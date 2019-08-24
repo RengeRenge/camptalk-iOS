@@ -2,9 +2,11 @@
 # platform :ios, '9.0'
 
 abstract_target 'CommonPod' do
-  pod 'RGUIKit', :path => '../RGUIKit'
+  pod 'RGUIKit', :path => '../../pro/RGUIKit'
 #  pod 'RGUIKit'
   pod 'AFNetworking'
+  pod 'Realm/Headers'
+  pod 'Realm'
   
   target 'CampTalk' do
     # Comment the next line if you don't want to use dynamic frameworks

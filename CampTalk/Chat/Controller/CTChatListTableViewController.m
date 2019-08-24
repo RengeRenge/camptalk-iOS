@@ -129,6 +129,8 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     CTChatTableViewController *vc = [CTChatTableViewController new];
+    vc.roomId = @"test";
+    vc.mUserId = @"Renge";
     [self.navigationController pushViewController:vc animated:YES];
 }
 

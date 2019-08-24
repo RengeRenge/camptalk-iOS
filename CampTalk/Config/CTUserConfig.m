@@ -21,14 +21,14 @@ NSString * const UCChatDataBackgroundFileName = @"chat_bg";
 + (NSString *)chatBackgroundImagePath {
     NSString *imageName = [[NSUserDefaults standardUserDefaults] stringForKey:kChatBackgroundImageName];
     if (imageName.length) {
-        return [CTFileManger pathWithFileName:imageName folderName:UCChatDataFolderName];
+        return [CTFileManger.cacheManager pathWithFileName:imageName folderName:UCChatDataFolderName];
     } else {
         return [[NSBundle mainBundle] pathForResource:@"chat_list_bg" ofType:@"png"];
     }
 }
 
 + (void)setChatBackgroundImageData:(NSData *)imageData {
-    NSString *path = [CTFileManger createFile:UCChatDataBackgroundFileName atFolder:UCChatDataFolderName data:imageData];
+    NSString *path = [CTFileManger.cacheManager createFile:UCChatDataBackgroundFileName atFolder:UCChatDataFolderName data:imageData];
     if (path.length) {
         [[NSUserDefaults standardUserDefaults] setObject:UCChatDataBackgroundFileName forKey:kChatBackgroundImageName];
         [[NSUserDefaults standardUserDefaults] synchronize];

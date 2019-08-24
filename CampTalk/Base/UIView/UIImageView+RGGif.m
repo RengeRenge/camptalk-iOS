@@ -69,36 +69,79 @@
     return gifView;
 }
 
-- (void)rg_setImagePath:(NSString *)path async:(BOOL)async completion:(void (^ _Nullable)(void))completion {
+- (void)rg_setImagePath:(NSString *)path
+                  async:(BOOL)async
+               delayGif:(NSTimeInterval)delayGif
+             completion:(NS_NOESCAPE BOOL (^)(NSData * _Nonnull))completion {
     if (async) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             NSData *data = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:path]];
             dispatch_async(dispatch_get_main_queue(), ^{
-                [self rg_setImageData:data];
                 if (completion) {
-                    completion();
+                    if (completion(data)) {
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                            [self rg_setImageData:data delayGif:delayGif];
+                        });
+                    }
+                } else {
+                    [self rg_setImageData:data delayGif:delayGif];
                 }
             });
         });
     } else {
         NSData *data = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:path]];
-        [self rg_setImageData:data];
         if (completion) {
-            completion();
+            if (completion(data)) {
+                [self rg_setImageData:data delayGif:delayGif];
+            }
+        } else {
+            [self rg_setImageData:data delayGif:delayGif];
         }
     }
 }
 
 - (void)rg_setImagePath:(NSString *)path {
-    [self rg_setImagePath:path async:NO completion:nil];
+    [self rg_setImagePath:path async:NO delayGif:0 completion:nil];
 }
 
 - (void)rg_setImageData:(NSData *)data {
+    [self rg_setImageData:data delayGif:0];
+}
+
+- (void)rg_setImageData:(NSData *)data delayGif:(NSTimeInterval)delayGif {
+    
     FLAnimatedImage *image = [[FLAnimatedImage alloc] initWithAnimatedGIFData:data];
-    if (image) {
-        self.image = (UIImage *)image;
+    UIImage *firstImage = nil;
+    if (image && delayGif) {
+        firstImage = [image imageLazilyCachedAtIndex:0];
+    }
+    
+    if (!image) {
+        image = (FLAnimatedImage *)[UIImage imageWithData:data];
+    }
+    
+    BOOL isMainThread = [NSThread isMainThread];
+    
+    void(^setImage)(void) = ^{
+        if (delayGif && firstImage) {
+            self.image = firstImage;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayGif * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                if (firstImage != self.image) {
+                    return;
+                }
+                self.image = (UIImage *)image;
+            });
+        } else {
+            self.image = (UIImage *)image;
+        }
+    };
+    
+    if (isMainThread) {
+        setImage();
     } else {
-        self.image = [UIImage imageWithData:data];
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            setImage();
+        });
     }
 }
 

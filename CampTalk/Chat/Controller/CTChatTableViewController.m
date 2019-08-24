@@ -24,7 +24,9 @@
 #import "CTUserConfig.h"
 #import "CTFileManger.h"
 
-#import "CTChatModel.h"
+#import "RGMessage.h"
+#import "RGRealmManager.h"
+#import "RGMessageViewModel.h"
 #import "CTChatIconConfig.h"
 
 static CGFloat kMinInputViewHeight = 60.f;
@@ -33,6 +35,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) CTStubbornView *tableViewCover;
+@property (nonatomic, strong) CTStubbornView *tableViewBackground;
 
 @property (nonatomic, strong) CTChatInputView *inputView;
 @property (nonatomic, strong) CTCameraView *cameraView;
@@ -44,7 +47,9 @@ static CGFloat kMinInputViewHeight = 60.f;
 @property (nonatomic, strong) NSIndexPath *recordMaxIndexPath;
 @property (nonatomic, assign) CGPoint recordOffSet;
 
-@property (nonatomic, strong) NSMutableArray <CTChatModel *> *data;
+@property (nonatomic, strong) RLMResults <RGMessage *> *messages;
+@property (nonatomic, strong) RLMNotificationToken *messagesToken;
+@property (nonatomic, strong) RLMResults <RGMessage *> *unReadMessages;
 
 @property (nonatomic, strong) CTMusicButton *dragButton;
 
@@ -58,6 +63,9 @@ static CGFloat kMinInputViewHeight = 60.f;
     self.navigationItem.title = @"CampTalk";
     
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
+    self.tableView.backgroundColor = [UIColor clearColor];
+    self.view.backgroundColor = [UIColor whiteColor];
+    
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
     UILongPressGestureRecognizer *longeTap = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(__changeBg:)];
@@ -71,8 +79,17 @@ static CGFloat kMinInputViewHeight = 60.f;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.tableView.delaysContentTouches = NO;
     
-    // fake data
-    _data = [CTChatModel fakeList];
+    // data
+    __weak typeof(self) wSelf = self;
+    _messages = [RGMessage messageWithRoomId:self.roomId username:self.mUserId];
+    self.messagesToken = [_messages addNotificationBlock:^(RLMResults<RGMessage *> * _Nullable results, RLMCollectionChange * _Nullable change, NSError * _Nullable error) {
+        if (!wSelf) {
+            return;
+        }
+        [wSelf __realmResults:results change:change error:error];
+    }];
+    
+    _unReadMessages = [RGMessage unreadMessageWithRoomId:self.roomId username:self.mUserId];
     
     [self setNeedScrollToBottom:YES];
     
@@ -100,14 +117,31 @@ static CGFloat kMinInputViewHeight = 60.f;
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     if (_needScrollToBottom) {
-        _needScrollToBottom = NO;
-        
-        if (_data.count <= 0) {
+        if (_messages.count <= 0) {
+            _needScrollToBottom = NO;
             return;
         }
-        [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:self->_data.count - 1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+        [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:self->_messages.count - 1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:self->_data.count - 1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+            [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:self->_messages.count - 1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self->_needScrollToBottom = NO;
+                
+                NSArray<__kindof UITableViewCell *> *visibleCells = self.tableView.visibleCells;
+                NSArray<NSIndexPath *> *indexPathsForVisibleRows = self.tableView.indexPathsForVisibleRows;
+                
+                if (!visibleCells.count) {
+                    [self.tableView reloadData];
+                    return;
+                }
+                [UIView animateWithDuration:0.5 animations:^{
+                    [visibleCells enumerateObjectsUsingBlock:^(__kindof UITableViewCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                        RGMessage *msg = self.messages[indexPathsForVisibleRows[idx].row];
+                        [self _configCell:obj withMessage:msg];
+                        [obj setNeedsLayout];
+                    }];
+                }];
+            });
         });
     }
 }
@@ -131,11 +165,14 @@ static CGFloat kMinInputViewHeight = 60.f;
         
         if (recordTBHeight != self.tableView.frame.size.height) {
             
-            if (!_recordMaxIndexPath) {
+            if (!_recordMaxIndexPath || self.messages.count <= 0) {
                 return;
             }
             
             [UIView performWithoutAnimation:^{
+                if (self.recordMaxIndexPath.row >= self.messages.count) {
+                    self.recordMaxIndexPath = [NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0];
+                }
                 [self.tableView scrollToRowAtIndexPath:self.recordMaxIndexPath atScrollPosition:UITableViewScrollPositionBottom animated:NO];
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [UIView performWithoutAnimation:^{
@@ -271,26 +308,27 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (void)__configBackgroundImage {
-//    NSData *data = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:]];
     NSString *path = [CTUserConfig chatBackgroundImagePath];
-    if ([self.tableView.backgroundView isKindOfClass:UIImageView.class]) {
-        [(UIImageView *)self.tableView.backgroundView rg_setImagePath:path];
-    } else {
-        UIImageView *bgView = [[UIImageView alloc] init];
+    if (!_tableViewBackground) {
+        CTStubbornView *bgView = [[CTStubbornView alloc] initWithFrame:self.view.bounds];
+        bgView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
         bgView.contentMode = UIViewContentModeScaleAspectFill;
         bgView.clipsToBounds = YES;
-        [bgView rg_setImagePath:path];
-        self.tableView.backgroundView = bgView;
         _cameraView.tintColorEffectView = bgView;
+        _tableViewBackground = bgView;
+        [self.view insertSubview:bgView atIndex:0];
     }
     if (!_tableViewCover) {
-        _tableViewCover = [[CTStubbornView alloc] initWithFrame:self.tableView.bounds];
+        _tableViewCover = [[CTStubbornView alloc] initWithFrame:self.view.bounds];
         _tableViewCover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         _tableViewCover.contentMode = UIViewContentModeScaleAspectFill;
         [_tableViewCover setGradientDirection:YES];
-        [self.tableView addSubview:_tableViewCover];
+        [self.view addSubview:_tableViewCover];
     }
-    [_tableViewCover rg_setImagePath:path];
+    
+    [_tableViewBackground rg_setImagePath:path async:NO delayGif:0.3 completion:nil];
+    [_tableViewCover rg_setImagePath:path async:NO delayGif:0.3 completion:nil];
+    
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__configInputViewTintColor) object:nil];
     [self performSelector:@selector(__configInputViewTintColor) withObject:nil afterDelay:0.3];
     
@@ -315,7 +353,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (void)__configStubbornViewLayout {
-    _tableViewCover.frame = self.tableView.bounds;
+    self.tableViewCover.frame = self.view.bounds;
     [self __adjustTableViewCoverAlpha];
 }
 
@@ -355,13 +393,13 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return _data.count;
+    return _messages.count;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    CTChatModel *model = _data[indexPath.row];
+    RGMessage *model = _messages[indexPath.row];
     if (model.thumbUrl) {
-        return [CTChatTableViewCell heightWithThumbSize:model.thumbSize tableView:tableView];
+        return [CTChatTableViewCell heightWithThumbSize:model.g_thumbSize tableView:tableView];
     } else if (model.message.length) {
         return [CTChatTableViewCell estimatedHeightWithText:model.message tableView:tableView];
     }
@@ -369,9 +407,9 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    CTChatModel *model = _data[indexPath.row];
+    RGMessage *model = _messages[indexPath.row];
     if (model.thumbUrl) {
-        return [CTChatTableViewCell heightWithThumbSize:model.thumbSize tableView:tableView];
+        return [CTChatTableViewCell heightWithThumbSize:model.g_thumbSize tableView:tableView];
     } else if (model.message.length) {
         return [CTChatTableViewCell heightWithText:model.message tableView:tableView];
     }
@@ -380,34 +418,29 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     CTChatTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CTChatTableViewCellId forIndexPath:indexPath];
-    
-    CTChatModel *model = _data[indexPath.row];
-    if ([model.userId isEqualToString:@"lin"]) {
-        cell.myDirection = NO;
-        cell.iconImage = [UIImage imageNamed:@"zhimalin"];
-    } else {
-        cell.myDirection = YES;
-        cell.iconImage = [UIImage rg_imageWithName:@"fuzi_hd"];
-    }
-    
-    if (model.thumbUrl) {
-        NSURL *url = [NSURL URLWithString:model.thumbUrl];
-        if (url.isFileURL) {
-            [cell.thumbView rg_setImagePath:url.path async:YES completion:^{
-                [cell setNeedsLayout];
-            }];
-        } else {
-            // load from server
-        }
-    } else if (model.message.length) {
-        cell.chatBubbleLabel.label.text = model.message;
-    }
-    
+    RGMessage *message = _messages[indexPath.row];
+    [self _configCell:cell withMessage:message];
     return cell;
+}
+
+- (void)_configCell:(CTChatTableViewCell *)cell withMessage:(RGMessage *)message {
+    if (!cell) {
+        return;
+    }
+    if (!_needScrollToBottom) {
+        [RGMessageViewModel configCell:cell withMessage:message];
+        cell.contentView.alpha = 1.f;
+    } else {
+        cell.contentView.alpha = 0.f;
+    }
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [self.tableView deselectRowAtIndexPath:indexPath animated:NO];
+    RLMRealm *realm = [RGRealmManager messageRealm];
+    [realm transactionWithBlock:^{
+        [realm deleteObject:self.messages[indexPath.row]];
+    }];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -417,10 +450,14 @@ static CGFloat kMinInputViewHeight = 60.f;
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
         [self performSelector:@selector(__recordMaxIndexPathIfNeed) withObject:nil afterDelay:0.3f inModes:@[NSRunLoopCommonModes]];
     }
-}
-
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    _tableViewCover.frame = scrollView.bounds;
+    RGMessage *message = self.messages[indexPath.row];
+    if (message.unread) {
+        [(CTChatTableViewCell *)cell lookMe:^(BOOL flag) {
+            [[RGRealmManager messageRealm] transactionWithBlock:^{
+                message.unread = NO;
+            }];
+        }];
+    }
 }
 
 - (void)__recordMaxIndexPathIfNeed {
@@ -484,7 +521,7 @@ static CGFloat kMinInputViewHeight = 60.f;
     if (!chatInputView.text.length) {
         return;
     }
-    CTChatModel *model = [CTChatModel new];
+    RGMessage *model = [RGMessage new];
     model.message = chatInputView.text;
     
     [UIView performWithoutAnimation:^{
@@ -641,34 +678,29 @@ static CGFloat kMinInputViewHeight = 60.f;
                 return;
             }
             
-            [pickerViewController.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-            
-            [imageData enumerateObjectsUsingBlock:^(NSData * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                
-                if (!obj.length) {
-                    return;
-                }
-                
-                PHAsset *asset = phassets[idx];
-                
-                CGFloat scale = [UIScreen mainScreen].scale;
-                CGFloat height = MIN(asset.pixelHeight, 120 * scale);
-                CGFloat width = height / asset.pixelHeight * asset.pixelWidth;
-                CGSize size = CGSizeMake(width, MIN(asset.pixelHeight, 120 * scale));
-                
-                NSString *path = [CTFileManger createFile:asset.localIdentifier atFolder:UCChatDataFolderName data:obj];
-                if (!path.length) {
-                    return;
-                }
-                CTChatModel *model = [CTChatModel new];
-                model.thumbUrl = [NSURL fileURLWithPath:path].absoluteString;
-                model.originalImageUrl = [NSURL fileURLWithPath:path].absoluteString;
-                model.thumbSize = size;
-                [self insertChatData:model];
+            [pickerViewController.presentingViewController dismissViewControllerAnimated:YES completion:^{
+                [imageData enumerateObjectsUsingBlock:^(NSData * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                    
+                    if (!obj.length) {
+                        return;
+                    }
+                    
+                    PHAsset *asset = phassets[idx];
+                    
+                    CGSize size = CGSizeMake(asset.pixelWidth, asset.pixelHeight);
+                    
+                    NSString *path = [CTFileManger.cacheManager createFile:asset.localIdentifier atFolder:UCChatDataFolderName data:obj];
+                    if (!path.length) {
+                        return;
+                    }
+                    RGMessage *model = [RGMessage new];
+                    model.thumbUrl = asset.localIdentifier;
+                    model.originalImageUrl = asset.localIdentifier;
+                    model.thumbSize = NSStringFromCGSize(size);
+                    [self insertChatData:model];
+                }];
             }];
         }];
-        
-        
     }];
 }
 
@@ -738,35 +770,13 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 #pragma mark - Data
 
-- (void)insertChatData:(CTChatModel *)chatData {
+- (void)insertChatData:(RGMessage *)chatData {
     void(^insertBlock)(void) = ^{
-        
-        if ([self.data containsObject:chatData]) {
-            return;
-        }
-        
-        [self.data addObject:chatData];
-        
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.data.count - 1 inSection:0];
-        
-        [UIView performWithoutAnimation:^{
-            if (@available(iOS 11.0, *)) {
-                [self.tableView performBatchUpdates:^{
-                    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationBottom];
-                } completion:^(BOOL finished) {
-//                    [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
-                    [self.tableView selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionBottom];
-                    [self.tableView deselectRowAtIndexPath:indexPath animated:NO];
-                }];
-            } else {
-                [self.tableView beginUpdates];
-                [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationBottom];
-                [self.tableView endUpdates];
-                
-//                [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
-                [self.tableView selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionBottom];
-                [self.tableView deselectRowAtIndexPath:indexPath animated:NO];
-            }
+        chatData.roomId = self.roomId;
+        chatData.sendTime = [[NSDate date] timeIntervalSince1970] * 1000;
+        RLMRealm *realm = [RGRealmManager messageRealm];
+        [realm transactionWithBlock:^{
+            [realm addObject:chatData];
         }];
     };
     if (![NSThread isMainThread]) {
@@ -775,6 +785,70 @@ static CGFloat kMinInputViewHeight = 60.f;
         });
     } else {
         insertBlock();
+    }
+}
+
+- (void)__realmResults:(RLMResults<RGMessage *> *)results change:(RLMCollectionChange *)change error:(NSError *)error {
+    void(^update)(void) = ^{
+        [self.tableView deleteRowsAtIndexPaths:[change deletionsInSection:0] withRowAnimation:UITableViewRowAnimationFade];
+        [self.tableView insertRowsAtIndexPaths:[change insertionsInSection:0] withRowAnimation:UITableViewRowAnimationFade];
+//        [self.tableView reloadRowsAtIndexPaths:[change modificationsInSection:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+    };
+    
+    NSInteger count = self.messages.count;
+    void(^completion)(BOOL updateChange) = ^(BOOL updateChange) {
+        if (updateChange) {
+            [[change modificationsInSection:0] enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                if (self.messages.count != count) {
+                    *stop = YES;
+                    return;
+                }
+                [self _configCell:[self.tableView cellForRowAtIndexPath:obj] withMessage:self.messages[obj.row]];
+            }];
+        }
+        if (change.insertions.count) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0];
+//            [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
+            [self.tableView selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionBottom];
+            [self.tableView deselectRowAtIndexPath:indexPath animated:NO];
+        }
+    };
+    
+    void(^doUpdate)(void) = ^{
+        if (@available(iOS 11.0, *)) {
+            [self.tableView performBatchUpdates:^{
+                update();
+            } completion:^(BOOL finished) {
+                if (finished) {
+                    completion(YES);
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        completion(NO);
+                    });
+                }
+            }];
+        } else {
+            [self.tableView beginUpdates];
+            update();
+            [self.tableView endUpdates];
+            completion(YES);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(NO);
+            });
+        }
+    };
+    if (change.insertions.count || change.deletions.count) {
+        if (change.insertions.count) {
+            [UIView performWithoutAnimation:^{
+                doUpdate();
+            }];
+        } else {
+            doUpdate();
+        }
+    } else {
+        completion(YES);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(NO);
+        });
     }
 }
 

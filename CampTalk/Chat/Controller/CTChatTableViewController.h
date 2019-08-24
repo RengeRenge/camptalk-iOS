@@ -10,4 +10,7 @@
 
 @interface CTChatTableViewController : UIViewController
 
+@property (nonatomic, copy) NSString *roomId;
+@property (nonatomic, copy) NSString *mUserId;
+
 @end

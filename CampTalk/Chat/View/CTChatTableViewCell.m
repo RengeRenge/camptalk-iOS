@@ -21,7 +21,7 @@ static CGFloat _marginTop = 20;
 
 NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 
-@interface CTChatTableViewCell ()
+@interface CTChatTableViewCell () <CAAnimationDelegate>
 
 @property (weak, nonatomic) IBOutlet UIImageView *iconView;
 @property (weak, nonatomic) IBOutlet RGBubbleView *thumbWapper;
@@ -81,7 +81,8 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     
     if (self.displayThumb) {
         //图片布局
-        bounds.size = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(bounds.size.width, height - _marginTop) imageSize:self.thumbView.image.rg_logicSize];
+        CGSize thumbLogicSize = [UIImage rg_logicSizeWithPixSize:self.thumbPixSize];
+        bounds.size = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(bounds.size.width, height - _marginTop) imageSize:thumbLogicSize];
         
         UIEdgeInsets bubbleEdge = self.thumbWapper.contentViewEdge;
         if (self.thumbWapper.bubbleRightToLeft) {
@@ -90,7 +91,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
             bubbleEdge.right = left;
         }
         
-        if (bubbleEdge.left * 4 <= self.thumbView.image.rg_logicSize.width) {
+        if (bubbleEdge.left * 4 <= thumbLogicSize.width) {
             [self.thumbWapper.backgroundView addSubview:self.thumbView];
             
             bounds.origin.y = self.bounds.size.height - bounds.size.height;
@@ -137,9 +138,9 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     }
 }
 
-- (BOOL)displayThumb {
-    return self.thumbView.image != nil;
-}
+//- (BOOL)displayThumb {
+//    return self.thumbView.image != nil;
+//}
 
 + (CGSize)imageSizeThatFits:(CGSize)size imageSize:(CGSize)imageSize {
     
@@ -181,29 +182,32 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 
 + (CGFloat)heightWithThumbSize:(CGSize)thumbSize tableView:(UITableView *)tableView {
     
-    CGFloat scale = [UIScreen mainScreen].scale;
-    thumbSize.height /= scale;
-    thumbSize.width /= scale;
+    thumbSize = [UIImage rg_logicSizeWithPixSize:thumbSize];
     
-    CGSize fits = CGSizeMake((tableView.frame.size.width - _maxIconSize.width - _margin * 2 - _marginBubble), 200.f);
+    CGSize fits = CGSizeMake((tableView.frame.size.width - 2 * _maxIconSize.width - _margin * 2 - _marginBubble), 200.f);
+    fits.width = MIN(fits.width, tableView.frame.size.width/2.f);
+    
     fits.height = [self imageSizeThatFits:fits imageSize:thumbSize].height;
     fits.height = MAX(fits.height, _maxIconSize.height);
     return fits.height + _marginTop ;
 }
 
-- (void)setSelected:(BOOL)selected animated:(BOOL)animated {
-    [super setSelected:selected animated:animated];
-
+- (void)lookMe:(void (^)(BOOL))completion {
     // Configure the view for the selected state
     if ([self.chatBubbleLabel.layer animationForKey:@"transformAnimation"]) {
+        if (completion) {
+            completion(NO);
+        }
         return;
     }
     if ([self.thumbWapper.layer animationForKey:@"transformAnimation"]) {
+        if (completion) {
+            completion(NO);
+        }
         return;
     }
-    if (!selected) {
-        return;
-    }
+    [self.thumbWapper.layer removeAllAnimations];
+    [self.chatBubbleLabel.layer removeAllAnimations];
     
     UIView *animateView = self.displayThumb ? self.thumbWapper : self.chatBubbleLabel;
     
@@ -217,11 +221,12 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     
     CABasicAnimation *transformAnimation = [CABasicAnimation animationWithKeyPath:@"transform"];
     transformAnimation.toValue = [NSValue valueWithCATransform3D:CATransform3DMakeScale(scale, scale, 1.0)];
-    transformAnimation.beginTime = CACurrentMediaTime();
+//    transformAnimation.beginTime = CACurrentMediaTime();
     transformAnimation.duration = 0.35f;
     transformAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     transformAnimation.removedOnCompletion = YES;
     transformAnimation.autoreverses = YES;
+    transformAnimation.delegate = self;
     
     if (_myDirection) {
         CGPoint position = animateView.layer.position;
@@ -235,14 +240,34 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
         animateView.layer.position = position;
     }
     [animateView.layer addAnimation:transformAnimation forKey:@"transformAnimation"];
+    if (completion) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            completion(YES);
+        });
+    }
 }
 
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    self.thumbView.image = nil;
-    self.chatBubbleLabel.label.text = nil;
-    [self setNeedsLayout];
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
+    if (![anim isKindOfClass:[CABasicAnimation class]]) {
+        return;
+    }
+    [self.thumbWapper.layer removeAllAnimations];
+    [self.chatBubbleLabel.layer removeAllAnimations];
 }
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated {
+    [super setSelected:selected animated:animated];
+    if (!selected) {
+        return;
+    }
+}
+
+//- (void)prepareForReuse {
+//    [super prepareForReuse];
+//    self.thumbView.image = nil;
+//    self.chatBubbleLabel.label.text = nil;
+//    [self setNeedsLayout];
+//}
 
 //- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
 //    UIView *hitView = [super hitTest:point withEvent:event];
