@@ -24,6 +24,7 @@ extern NSString *const CTChatTableViewCellId;
 @property (assign, nonatomic) BOOL myDirection;
 
 @property (assign, nonatomic) BOOL displayThumb;
+@property (assign, nonatomic) CGFloat loadThumbProresss;
 @property (assign, nonatomic) CGSize thumbPixSize;
 
 + (void)registerForTableView:(UITableView *)tableView;

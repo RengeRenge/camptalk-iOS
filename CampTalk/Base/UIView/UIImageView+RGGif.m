@@ -12,7 +12,17 @@
 
 @implementation UIImageView(RGGif)
 
+- (dispatch_queue_t)loadDataQueue {
+    static dispatch_queue_t _loadImageDataQueue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _loadImageDataQueue = dispatch_queue_create("_loadImageDataQueue", DISPATCH_QUEUE_CONCURRENT);
+    });
+    return _loadImageDataQueue;
+}
+
 + (void)load {
+    [super load];
     [self rg_swizzleOriginalSel:@selector(setContentMode:) swizzledSel:@selector(rg_setContentMode:)];
     [self rg_swizzleOriginalSel:@selector(image) swizzledSel:@selector(rg_image)];
     [self rg_swizzleOriginalSel:@selector(setImage:) swizzledSel:@selector(rg_setImage:)];
@@ -72,26 +82,30 @@
 - (void)rg_setImagePath:(NSString *)path
                   async:(BOOL)async
                delayGif:(NSTimeInterval)delayGif
-             completion:(NS_NOESCAPE BOOL (^)(NSData * _Nonnull))completion {
+           continueLoad:(NS_NOESCAPE BOOL (^)(NSData * _Nonnull))continueLoad {
     if (async) {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            NSData *data = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:path]];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) {
-                    if (completion(data)) {
-                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            [self rg_setPathId:path];
+            
+            dispatch_async(self.loadDataQueue, ^{
+                NSData *data = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:path]];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (![self.rg_pathId isEqualToString:path]) {
+                        return;
+                    }
+                    if (!continueLoad || (continueLoad && continueLoad(data))) {
+                        dispatch_async(self.loadDataQueue, ^{
                             [self rg_setImageData:data delayGif:delayGif];
                         });
                     }
-                } else {
-                    [self rg_setImageData:data delayGif:delayGif];
-                }
+                });
             });
         });
     } else {
         NSData *data = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:path]];
-        if (completion) {
-            if (completion(data)) {
+        if (continueLoad) {
+            if (continueLoad(data)) {
                 [self rg_setImageData:data delayGif:delayGif];
             }
         } else {
@@ -100,8 +114,24 @@
     }
 }
 
+- (void)rg_setPathId:(NSString *)path {
+    [self rg_setValue:path forKey:@"UIImageView_RGGif_Path" retain:YES];
+}
+
+- (NSString *)rg_pathId {
+    NSString *value = [self rg_valueForKey:@"UIImageView_RGGif_Path"];
+    if (!value) {
+        value = @"";
+    }
+    return value;
+}
+
+- (void)rg_cancelSetImagePath {
+    [self rg_setPathId:nil];
+}
+
 - (void)rg_setImagePath:(NSString *)path {
-    [self rg_setImagePath:path async:NO delayGif:0 completion:nil];
+    [self rg_setImagePath:path async:NO delayGif:0 continueLoad:nil];
 }
 
 - (void)rg_setImageData:(NSData *)data {
@@ -109,6 +139,8 @@
 }
 
 - (void)rg_setImageData:(NSData *)data delayGif:(NSTimeInterval)delayGif {
+    
+    NSString *path = [self rg_pathId];
     
     FLAnimatedImage *image = [[FLAnimatedImage alloc] initWithAnimatedGIFData:data];
     UIImage *firstImage = nil;
@@ -129,6 +161,9 @@
                 if (firstImage != self.image) {
                     return;
                 }
+                if (![path isEqualToString:self.rg_pathId]) {
+                    return;
+                }
                 self.image = (UIImage *)image;
             });
         } else {
@@ -140,6 +175,9 @@
         setImage();
     } else {
         dispatch_sync(dispatch_get_main_queue(), ^{
+            if (![path isEqualToString:self.rg_pathId]) {
+                return;
+            }
             setImage();
         });
     }

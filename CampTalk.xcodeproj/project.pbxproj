@@ -115,6 +115,10 @@
 		E6E05AD8209C358C00C54A24 /* chatBg_1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */; };
 		E6FA14A020BEEC1000F097C8 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6FA149F20BEEC1000F097C8 /* CFNetwork.framework */; };
 		E6FA14A120BEEC1800F097C8 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6FA149F20BEEC1000F097C8 /* CFNetwork.framework */; };
+		E6FBE92223121F230055DB36 /* WeakProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91823121F230055DB36 /* WeakProxy.m */; };
+		E6FBE92323121F230055DB36 /* WeakProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91823121F230055DB36 /* WeakProxy.m */; };
+		E6FBE92623121F230055DB36 /* JYWaveView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91E23121F230055DB36 /* JYWaveView.m */; };
+		E6FBE92723121F230055DB36 /* JYWaveView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91E23121F230055DB36 /* JYWaveView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -243,6 +247,10 @@
 		E6D3BAF022F5B55300A6E595 /* UIImageView+RGGif.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIImageView+RGGif.m"; sourceTree = "<group>"; };
 		E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = chatBg_1.jpg; sourceTree = "<group>"; };
 		E6FA149F20BEEC1000F097C8 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
+		E6FBE91823121F230055DB36 /* WeakProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WeakProxy.m; sourceTree = "<group>"; };
+		E6FBE91923121F230055DB36 /* JYWaveView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JYWaveView.h; sourceTree = "<group>"; };
+		E6FBE91B23121F230055DB36 /* WeakProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakProxy.h; sourceTree = "<group>"; };
+		E6FBE91E23121F230055DB36 /* JYWaveView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JYWaveView.m; sourceTree = "<group>"; };
 		EF0403BB5F62FA71A469BBD6 /* Pods_CommonPod_CampTalk.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CommonPod_CampTalk.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -477,6 +485,7 @@
 		E618C3A820A5F9170072B6F8 /* 3rd */ = {
 			isa = PBXGroup;
 			children = (
+				E6FBE91523121F230055DB36 /* JYWaveView */,
 				E618C3A920A5F9280072B6F8 /* FLAnimatedImage */,
 			);
 			path = 3rd;
@@ -601,6 +610,17 @@
 				461152995D162A193136FA8C /* Pods_CommonPod_CampTalk_Beta.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		E6FBE91523121F230055DB36 /* JYWaveView */ = {
+			isa = PBXGroup;
+			children = (
+				E6FBE91923121F230055DB36 /* JYWaveView.h */,
+				E6FBE91E23121F230055DB36 /* JYWaveView.m */,
+				E6FBE91B23121F230055DB36 /* WeakProxy.h */,
+				E6FBE91823121F230055DB36 /* WeakProxy.m */,
+			);
+			path = JYWaveView;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -750,12 +770,14 @@
 				"${BUILT_PRODUCTS_DIR}/AFNetworking/AFNetworking.framework",
 				"${BUILT_PRODUCTS_DIR}/RGUIKit/RGUIKit.framework",
 				"${BUILT_PRODUCTS_DIR}/Realm/Realm.framework",
+				"${BUILT_PRODUCTS_DIR}/SDWebImage/SDWebImage.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AFNetworking.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGUIKit.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Realm.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SDWebImage.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -794,12 +816,14 @@
 				"${BUILT_PRODUCTS_DIR}/AFNetworking/AFNetworking.framework",
 				"${BUILT_PRODUCTS_DIR}/RGUIKit/RGUIKit.framework",
 				"${BUILT_PRODUCTS_DIR}/Realm/Realm.framework",
+				"${BUILT_PRODUCTS_DIR}/SDWebImage/SDWebImage.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AFNetworking.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGUIKit.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Realm.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SDWebImage.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -859,6 +883,7 @@
 				9E72764B2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765520896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
 				E6D3BAD822F3D25C00A6E595 /* RGImagePickerCell.m in Sources */,
+				E6FBE92223121F230055DB36 /* WeakProxy.m in Sources */,
 				E618C39E20A5EE4D0072B6F8 /* CTLoginViewController.m in Sources */,
 				E6312BB420A28C670090054C /* CTUserConfig.m in Sources */,
 				9E727675208C13BF00FE9454 /* CTChatInputView.m in Sources */,
@@ -867,6 +892,7 @@
 				E6312BBE20A290DA0090054C /* MLWBluuurView.m in Sources */,
 				E6B7F48B2096869800918BC8 /* CTMusicButton.m in Sources */,
 				E6AA7B882310BEE0002CB741 /* RGMessage.m in Sources */,
+				E6FBE92623121F230055DB36 /* JYWaveView.m in Sources */,
 				E6AA7B8F2310CA92002CB741 /* RGLoginManager.m in Sources */,
 				9E7276402088A01900FE9454 /* RGBorderLabel.m in Sources */,
 			);
@@ -900,6 +926,7 @@
 				9E72764C2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765620896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
 				E6D3BAD922F3D25C00A6E595 /* RGImagePickerCell.m in Sources */,
+				E6FBE92323121F230055DB36 /* WeakProxy.m in Sources */,
 				E618C39F20A5EE4D0072B6F8 /* CTLoginViewController.m in Sources */,
 				E6312BB520A28C670090054C /* CTUserConfig.m in Sources */,
 				9E727676208C13BF00FE9454 /* CTChatInputView.m in Sources */,
@@ -908,6 +935,7 @@
 				E6312BBF20A290DA0090054C /* MLWBluuurView.m in Sources */,
 				E6B7F48C2096869800918BC8 /* CTMusicButton.m in Sources */,
 				E6AA7B892310BEE1002CB741 /* RGMessage.m in Sources */,
+				E6FBE92723121F230055DB36 /* JYWaveView.m in Sources */,
 				E6AA7B902310CA92002CB741 /* RGLoginManager.m in Sources */,
 				9E7276412088A01900FE9454 /* RGBorderLabel.m in Sources */,
 			);

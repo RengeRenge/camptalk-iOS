@@ -63,6 +63,9 @@ static CGFloat kMinInputViewHeight = 60.f;
     self.navigationItem.title = @"CampTalk";
     
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
+    self.tableView.estimatedRowHeight = 0;
+    self.tableView.estimatedSectionFooterHeight = 0;
+    self.tableView.estimatedSectionHeaderHeight = 0;
     self.tableView.backgroundColor = [UIColor clearColor];
     self.view.backgroundColor = [UIColor whiteColor];
     
@@ -121,27 +124,28 @@ static CGFloat kMinInputViewHeight = 60.f;
             _needScrollToBottom = NO;
             return;
         }
-        [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:self->_messages.count - 1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+        
+        [self.tableView setNeedsLayout];
+        [self.tableView layoutIfNeeded];
+        [self.tableView rg_scrollViewToBottom:NO];
+        
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:self->_messages.count - 1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                self->_needScrollToBottom = NO;
-                
-                NSArray<__kindof UITableViewCell *> *visibleCells = self.tableView.visibleCells;
-                NSArray<NSIndexPath *> *indexPathsForVisibleRows = self.tableView.indexPathsForVisibleRows;
-                
-                if (!visibleCells.count) {
-                    [self.tableView reloadData];
-                    return;
-                }
-                [UIView animateWithDuration:0.5 animations:^{
-                    [visibleCells enumerateObjectsUsingBlock:^(__kindof UITableViewCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                        RGMessage *msg = self.messages[indexPathsForVisibleRows[idx].row];
-                        [self _configCell:obj withMessage:msg];
-                        [obj setNeedsLayout];
-                    }];
+            self->_needScrollToBottom = NO;
+            
+            NSArray<__kindof UITableViewCell *> *visibleCells = self.tableView.visibleCells;
+            NSArray<NSIndexPath *> *indexPathsForVisibleRows = self.tableView.indexPathsForVisibleRows;
+            
+            if (!visibleCells.count) {
+                [self.tableView reloadData];
+                return;
+            }
+            [UIView animateWithDuration:0.5 animations:^{
+                [visibleCells enumerateObjectsUsingBlock:^(__kindof UITableViewCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                    RGMessage *msg = self.messages[indexPathsForVisibleRows[idx].row];
+                    [self _configCell:obj withMessage:msg];
+                    [obj setNeedsLayout];
                 }];
-            });
+            }];
         });
     }
 }
@@ -326,8 +330,8 @@ static CGFloat kMinInputViewHeight = 60.f;
         [self.view addSubview:_tableViewCover];
     }
     
-    [_tableViewBackground rg_setImagePath:path async:NO delayGif:0.3 completion:nil];
-    [_tableViewCover rg_setImagePath:path async:NO delayGif:0.3 completion:nil];
+    [_tableViewBackground rg_setImagePath:path async:NO delayGif:0.3 continueLoad:nil];
+    [_tableViewCover rg_setImagePath:path async:NO delayGif:0.3 continueLoad:nil];
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__configInputViewTintColor) object:nil];
     [self performSelector:@selector(__configInputViewTintColor) withObject:nil afterDelay:0.3];
@@ -396,15 +400,6 @@ static CGFloat kMinInputViewHeight = 60.f;
     return _messages.count;
 }
 
-- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    RGMessage *model = _messages[indexPath.row];
-    if (model.thumbUrl) {
-        return [CTChatTableViewCell heightWithThumbSize:model.g_thumbSize tableView:tableView];
-    } else if (model.message.length) {
-        return [CTChatTableViewCell estimatedHeightWithText:model.message tableView:tableView];
-    }
-    return 0.f;
-}
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     RGMessage *model = _messages[indexPath.row];
@@ -444,12 +439,10 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (!_recordMaxIndexPath) {
-        [self __recordMaxIndexPathIfNeed];
-    } else {
-        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
-        [self performSelector:@selector(__recordMaxIndexPathIfNeed) withObject:nil afterDelay:0.3f inModes:@[NSRunLoopCommonModes]];
-    }
+    
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
+    [self performSelector:@selector(__recordMaxIndexPathIfNeed) withObject:nil afterDelay:0.3f inModes:@[NSRunLoopCommonModes]];
+    
     RGMessage *message = self.messages[indexPath.row];
     if (message.unread) {
         [(CTChatTableViewCell *)cell lookMe:^(BOOL flag) {
@@ -460,9 +453,27 @@ static CGFloat kMinInputViewHeight = 60.f;
     }
 }
 
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if (!decelerate) {
+        [self __endScroll];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    [self __endScroll];
+}
+
+- (void)__endScroll {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
+    [self performSelector:@selector(__recordMaxIndexPathIfNeed) withObject:nil afterDelay:0.3f inModes:@[NSRunLoopCommonModes]];
+}
+
 - (void)__recordMaxIndexPathIfNeed {
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
-    _recordMaxIndexPath = self.tableView.indexPathsForVisibleRows.lastObject.copy;
+    CGFloat pointY = self.tableView.contentOffset.y + self.tableView.frame.size.height - self.tableView.contentInset.bottom - 1;
+    CGFloat height = self.tableView.frame.size.height * 2;
+    NSIndexPath *indexPath = [self.tableView indexPathsForRowsInRect:CGRectMake(0, pointY-height, 1, height)].lastObject;
+    _recordMaxIndexPath = indexPath.copy;
 }
 
 #pragma mark - CTChatInputViewDelegate
@@ -576,6 +587,10 @@ static CGFloat kMinInputViewHeight = 60.f;
     UIEdgeInsets scrollIndicatorInsets = self.tableView.scrollIndicatorInsets;
     scrollIndicatorInsets.bottom = bottom - bottomMargin;
     self.tableView.scrollIndicatorInsets = scrollIndicatorInsets;
+    
+    if (_needScrollToBottom) {
+        [self.tableView rg_scrollViewToBottom:NO];
+    }
 }
 
 - (void)__configInputViewTintColor {
@@ -773,6 +788,12 @@ static CGFloat kMinInputViewHeight = 60.f;
 - (void)insertChatData:(RGMessage *)chatData {
     void(^insertBlock)(void) = ^{
         chatData.roomId = self.roomId;
+        if (arc4random()%2) {
+            chatData.userId = self.mUserId;
+        } else {
+            chatData.userId = @"lin";
+        }
+        
         chatData.sendTime = [[NSDate date] timeIntervalSince1970] * 1000;
         RLMRealm *realm = [RGRealmManager messageRealm];
         [realm transactionWithBlock:^{
@@ -789,6 +810,9 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (void)__realmResults:(RLMResults<RGMessage *> *)results change:(RLMCollectionChange *)change error:(NSError *)error {
+    if (!change) {
+        return;
+    }
     void(^update)(void) = ^{
         [self.tableView deleteRowsAtIndexPaths:[change deletionsInSection:0] withRowAnimation:UITableViewRowAnimationFade];
         [self.tableView insertRowsAtIndexPaths:[change insertionsInSection:0] withRowAnimation:UITableViewRowAnimationFade];
@@ -796,21 +820,28 @@ static CGFloat kMinInputViewHeight = 60.f;
     };
     
     NSInteger count = self.messages.count;
-    void(^completion)(BOOL updateChange) = ^(BOOL updateChange) {
-        if (updateChange) {
-            [[change modificationsInSection:0] enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                if (self.messages.count != count) {
-                    *stop = YES;
-                    return;
-                }
-                [self _configCell:[self.tableView cellForRowAtIndexPath:obj] withMessage:self.messages[obj.row]];
-            }];
-        }
+    BOOL isBottom = [self.tableView rg_isBottom];
+    
+    void(^completion)(void) = ^ {
+        [[change modificationsInSection:0] enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            if (self.messages.count != count) {
+                *stop = YES;
+                return;
+            }
+            [self _configCell:[self.tableView cellForRowAtIndexPath:obj] withMessage:self.messages[obj.row]];
+        }];
         if (change.insertions.count) {
-            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0];
-//            [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
-            [self.tableView selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionBottom];
-            [self.tableView deselectRowAtIndexPath:indexPath animated:NO];
+            if (isBottom) {
+                [self.tableView rg_scrollViewToBottom:YES];
+                return;
+            }
+            
+            [change.insertions enumerateObjectsUsingBlock:^(NSNumber * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                if ([self.messages[obj.integerValue].userId isEqualToString:self.mUserId]) {
+                    *stop = YES;
+                    [self.tableView rg_scrollViewToBottom:YES];
+                }
+            }];
         }
     };
     
@@ -820,20 +851,14 @@ static CGFloat kMinInputViewHeight = 60.f;
                 update();
             } completion:^(BOOL finished) {
                 if (finished) {
-                    completion(YES);
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        completion(NO);
-                    });
+                    completion();
                 }
             }];
         } else {
             [self.tableView beginUpdates];
             update();
             [self.tableView endUpdates];
-            completion(YES);
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(NO);
-            });
+            completion();
         }
     };
     if (change.insertions.count || change.deletions.count) {
@@ -845,10 +870,7 @@ static CGFloat kMinInputViewHeight = 60.f;
             doUpdate();
         }
     } else {
-        completion(YES);
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(NO);
-        });
+        completion();
     }
 }
 

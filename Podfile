@@ -7,6 +7,7 @@ abstract_target 'CommonPod' do
   pod 'AFNetworking'
   pod 'Realm/Headers'
   pod 'Realm'
+  pod 'SDWebImage'
   
   target 'CampTalk' do
     # Comment the next line if you don't want to use dynamic frameworks
