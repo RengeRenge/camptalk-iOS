@@ -31,13 +31,13 @@
 
 static CGFloat kMinInputViewHeight = 60.f;
 
-@interface CTChatTableViewController () <CTChatInputViewDelegate, RGUINavigationControllerShouldPopDelegate, CTCameraViewDelegate, UITableViewDataSource, UITableViewDelegate>
+@interface CTChatTableViewController () <CTChatInputViewDelegate, RGUINavigationControllerShouldPopDelegate, CTCameraViewDelegate, UITableViewDataSource, UITableViewDelegate, CTChatTableViewCellActionDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) CTStubbornView *tableViewCover;
 @property (nonatomic, strong) CTStubbornView *tableViewBackground;
 
-@property (nonatomic, strong) CTChatInputView *inputView;
+@property (nonatomic, strong) CTChatInputView *mInputView;
 @property (nonatomic, strong) CTCameraView *cameraView;
 
 @property (nonatomic, assign) CGFloat keyboardHeight;
@@ -96,11 +96,11 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     [self setNeedScrollToBottom:YES];
     
-    _inputView = [[CTChatInputView alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height - kMinInputViewHeight, self.view.bounds.size.width, kMinInputViewHeight)];
-    _inputView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
-    [_inputView.actionButton setImage:[[UIImage rg_imageWithName:@"fuzi_hd"] rg_imageFlippedForRightToLeftLayoutDirection] forState:UIControlStateNormal];
-    _inputView.delegate = self;
-    [self.view addSubview:_inputView];
+    _mInputView = [[CTChatInputView alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height - kMinInputViewHeight, self.view.bounds.size.width, kMinInputViewHeight)];
+    _mInputView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+    [_mInputView.actionButton setImage:[[UIImage rg_imageWithName:@"fuzi_hd"] rg_imageFlippedForRightToLeftLayoutDirection] forState:UIControlStateNormal];
+    _mInputView.delegate = self;
+    [self.view addSubview:_mInputView];
     [self __configInputViewLayout];
     
     _cameraView = [[CTCameraView alloc] init];
@@ -198,7 +198,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (void)__configIconPlace {
     
-    [_inputView removeAllToolBarItem];
+    [_mInputView removeAllToolBarItem];
     [self removeAllRightDragBarItem];
     
     NSArray <NSString *> *allkeys = [CTChatIconConfig.toolConfig allKeys];
@@ -214,7 +214,7 @@ static CGFloat kMinInputViewHeight = 60.f;
             switch (place) {
                 case CTChatToolIconPlaceInputView: {
                     UIView *icon = [self iconCopyWithIconId:iconId];
-                    [_inputView addToolBarItem:[CTChatInputViewToolBarItem itemWithIcon:icon identifier:iconId]];
+                    [_mInputView addToolBarItem:[CTChatInputViewToolBarItem itemWithIcon:icon identifier:iconId]];
                     if (iconId == CTChatToolIconIdCamara) {
                         _cameraView.hidden = YES;
                     }
@@ -262,7 +262,7 @@ static CGFloat kMinInputViewHeight = 60.f;
                 break;
             }
             case CTChatToolIconPlaceInputView:{
-                [self.inputView.toolBarItems enumerateObjectsUsingBlock:^(CTChatInputViewToolBarItem * _Nonnull items, NSUInteger idx, BOOL * _Nonnull stop) {
+                [self.mInputView.toolBarItems enumerateObjectsUsingBlock:^(CTChatInputViewToolBarItem * _Nonnull items, NSUInteger idx, BOOL * _Nonnull stop) {
                     [icons enumerateObjectsUsingBlock:^(NSNumber * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                         if (items.identifier == obj.integerValue) {
                             [newArray addObject:obj];
@@ -413,6 +413,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     CTChatTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CTChatTableViewCellId forIndexPath:indexPath];
+    cell.delegate = self;
     RGMessage *message = _messages[indexPath.row];
     [self _configCell:cell withMessage:message];
     return cell;
@@ -431,11 +432,6 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [self.tableView deselectRowAtIndexPath:indexPath animated:NO];
-    RLMRealm *realm = [RGRealmManager messageRealm];
-    [realm transactionWithBlock:^{
-        [realm deleteObject:self.messages[indexPath.row]];
-    }];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -548,20 +544,20 @@ static CGFloat kMinInputViewHeight = 60.f;
     }
     CGRect bounds = self.view.bounds;
     
-    CGFloat inputHeight = MAX(kMinInputViewHeight, _inputView.contentHeight);
+    CGFloat inputHeight = MAX(kMinInputViewHeight, _mInputView.contentHeight);
     CGFloat bottomMargin = 10.f;
     
     //    CGFloat lastBottom = bounds.size.height - CGRectGetMinY(_inputView.frame) + bottomMargin - self.rg_viewSafeAreaInsets.bottom;
     
-    _inputView.frame = CGRectMake(0, bounds.size.height - inputHeight - _keyboardHeight, bounds.size.width, inputHeight);
+    _mInputView.frame = CGRectMake(0, bounds.size.height - inputHeight - _keyboardHeight, bounds.size.width, inputHeight);
     
     CGFloat safeAreaBottom = 0.f;
     if (@available(iOS 11.0, *)) {
-        safeAreaBottom = _inputView.safeAreaInsets.bottom;
-        _inputView.frame = UIEdgeInsetsInsetRect(_inputView.frame, UIEdgeInsetsMake(-safeAreaBottom, 0, 0, 0));
+        safeAreaBottom = _mInputView.safeAreaInsets.bottom;
+        _mInputView.frame = UIEdgeInsetsInsetRect(_mInputView.frame, UIEdgeInsetsMake(-safeAreaBottom, 0, 0, 0));
     }
     
-    CGFloat bottom = bounds.size.height - CGRectGetMinY(_inputView.frame) + bottomMargin - self.rg_viewSafeAreaInsets.bottom;
+    CGFloat bottom = bounds.size.height - CGRectGetMinY(_mInputView.frame) + bottomMargin - self.rg_viewSafeAreaInsets.bottom;
     
     CGPoint contentOffset = self.tableView.contentOffset;
     UIEdgeInsets contentInset = self.tableView.contentInset;
@@ -598,11 +594,11 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     CGSize boundsSize = self.view.bounds.size;
     UIEdgeInsets edge = self.rg_viewSafeAreaInsets;
-    CGRect toolBarFrame = _inputView.toolBarFrame;
+    CGRect toolBarFrame = _mInputView.toolBarFrame;
     
     CGFloat toolBarHeight = CTChatInputToolBarHeight + edge.bottom;
     CGFloat toolBarWidth = MAX(toolBarFrame.size.width, CTChatInputToolBarHeight);
-    edge.left = toolBarFrame.origin.x + _inputView.contentView.frame.origin.x;
+    edge.left = toolBarFrame.origin.x + _mInputView.contentView.frame.origin.x;
 
     UIImage *image = [(UIImageView *)self.tableView.backgroundView image];
     
@@ -622,7 +618,7 @@ static CGFloat kMinInputViewHeight = 60.f;
                                          toolBarWidth * scale,
                                          (toolBarHeight - edge.bottom) * scale)];
         dispatch_sync(dispatch_get_main_queue(), ^{
-            [self.inputView updateNormalTintColorWithBackgroundImage:cropImage];
+            [self.mInputView updateNormalTintColorWithBackgroundImage:cropImage];
         });
     });
 }
@@ -630,7 +626,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 #pragma mark - CTCameraViewDelegate
 
 - (void)cameraView:(CTCameraView *)cameraView didDragButton:(UIButton *)cameraButton {
-    [_inputView updateInputViewDragIcon:cameraButton toolId:CTChatToolIconIdCamara copyIconBlock:^UIView *{
+    [_mInputView updateInputViewDragIcon:cameraButton toolId:CTChatToolIconIdCamara copyIconBlock:^UIView *{
         return [self createCameraButton];
     }];
 }
@@ -639,7 +635,7 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     __weak typeof(self) wSelf = self;
     
-    [_inputView addOrRemoveInputViewToolBarWithDragIcon:cameraButton toolId:CTChatToolIconIdCamara copyIconBlock:^UIView *{
+    [_mInputView addOrRemoveInputViewToolBarWithDragIcon:cameraButton toolId:CTChatToolIconIdCamara copyIconBlock:^UIView *{
         
         return [wSelf createCameraButton];
         
@@ -742,7 +738,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 #pragma mark - UIViewController + DragBarItem
 
 - (void)dragItem:(UIView *)icon didDrag:(NSInteger)itmeId {
-    [_inputView updateInputViewDragIcon:icon toolId:itmeId copyIconBlock:^UIView *{
+    [_mInputView updateInputViewDragIcon:icon toolId:itmeId copyIconBlock:^UIView *{
         return [self iconCopyWithIconId:itmeId];
     }];
 }
@@ -752,7 +748,7 @@ static CGFloat kMinInputViewHeight = 60.f;
     __weak typeof(self) wSelf = self;
     __block BOOL remove = YES;
     
-    [_inputView addOrRemoveInputViewToolBarWithDragIcon:icon toolId:itmeId copyIconBlock:^UIView *{
+    [_mInputView addOrRemoveInputViewToolBarWithDragIcon:icon toolId:itmeId copyIconBlock:^UIView *{
         return [wSelf iconCopyWithIconId:itmeId];
     } customAnimate:nil completion:^(BOOL added) {
         remove = added;
@@ -781,6 +777,27 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (void)dragItemDidDragRemove:(UIView *)icon didDrag:(NSInteger)itemId {
     [self __updateIconConfig];
+}
+
+#pragma mark - CTChatTableViewCellActionDelegate
+
+- (void)shareChatTableViewCell:(CTChatTableViewCell *)cell {
+    
+}
+
+- (void)lookupChatTableViewCell:(CTChatTableViewCell *)cell {
+    
+}
+
+- (void)deleteChatTableViewCell:(CTChatTableViewCell *)cell {
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    if (!indexPath) {
+        return;
+    }
+    RLMRealm *realm = [RGRealmManager messageRealm];
+    [realm transactionWithBlock:^{
+        [realm deleteObject:self.messages[indexPath.row]];
+    }];
 }
 
 #pragma mark - Data

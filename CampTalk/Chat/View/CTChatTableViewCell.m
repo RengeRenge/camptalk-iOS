@@ -40,6 +40,13 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     [super awakeFromNib];
     self.chatBubbleLabel.layer.anchorPoint = CGPointMake(0, 1);
     self.thumbWapper.layer.anchorPoint = CGPointMake(0, 1);
+    
+    UILongPressGestureRecognizer *longTap = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(onItemLongTap:)];
+    [self.chatBubbleLabel addGestureRecognizer:longTap];
+    
+    longTap = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(onItemLongTap:)];
+    self.thumbWapper.userInteractionEnabled = YES;
+    [self.thumbWapper addGestureRecognizer:longTap];
 }
 
 - (JYWaveView *)waveView {
@@ -82,10 +89,10 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
                     [self.waveView stop];
                 }
             }];
-        } else {
-            self.waveView.alpha = 1;
-            self.thumbView.alpha = 0;
+            return;
         }
+        self.waveView.alpha = 1;
+        self.thumbView.alpha = 0;
         self.waveView.waveBottomWillToHeight = self.thumbView.bounds.size.height*loadThumbProresss;
         [self.waveView strat];
     } else {
@@ -137,17 +144,27 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
             bubbleEdge.right = left;
         }
         
-        [self.thumbWapper.contentView addSubview:self.thumbView];
-        if (bubbleEdge.left * 4 <= thumbLogicSize.width) {
+        if (bubbleEdge.left * 8 <= thumbLogicSize.width) {
+            [self.thumbWapper.backgroundView addSubview:self.thumbView];
+            self.thumbWapper.backgroundView.backgroundColor = [UIColor clearColor];
+            
             bounds.origin.y = self.bounds.size.height - bounds.size.height;
+            
+            self.thumbWapper.frame = bounds;
+            self.thumbView.frame = self.thumbWapper.backgroundView.bounds;
         } else {
+            [self.thumbWapper.contentView addSubview:self.thumbView];
+            self.thumbWapper.backgroundView.backgroundColor = [UIColor whiteColor];
+
             bounds.size.width += (bubbleEdge.left + bubbleEdge.right);
             bounds.size.height += (bubbleEdge.top + bubbleEdge.bottom);
             bounds.origin.y = self.bounds.size.height - bounds.size.height;
+            
+            self.thumbWapper.frame = bounds;
+            self.thumbView.frame = self.thumbWapper.contentView.bounds;
+
         }
-        self.thumbWapper.frame = bounds;
         self.waveView.frame = self.thumbWapper.bounds;
-        self.thumbView.frame = self.thumbWapper.contentView.bounds;
         
         self.chatBubbleLabel.hidden = YES;
         self.thumbWapper.hidden = NO;
@@ -299,6 +316,76 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     }
     [self.thumbWapper.layer removeAllAnimations];
     [self.chatBubbleLabel.layer removeAllAnimations];
+}
+
+- (BOOL)canBecomeFirstResponder {
+    return YES;
+}
+
+- (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
+    if (action == @selector(copy:)){
+        return YES;
+    }
+//    if (action == @selector(select:)){
+//        return YES;
+//    }
+    if (action == @selector(delete:)){
+        return YES;
+    }
+    if (action == @selector(_lookup:)){
+        return YES;
+    }
+    if (action == @selector(_share:)){
+        return YES;
+    }
+    return NO;
+}
+
+- (void)copy:(id)sender {
+    UIPasteboard *pboard = [UIPasteboard generalPasteboard];
+    if (self.displayThumb) {
+        pboard.image = self.thumbView.image;
+    } else {
+        pboard.string = self.chatBubbleLabel.label.text;
+    }
+}
+
+- (void)delete:(id)sender {
+    if ([self.delegate respondsToSelector:@selector(deleteChatTableViewCell:)]) {
+        [self.delegate deleteChatTableViewCell:self];
+    }
+}
+
+- (void)_lookup:(id)sender {
+    if ([self.delegate respondsToSelector:@selector(lookupChatTableViewCell:)]) {
+        [self.delegate lookupChatTableViewCell:self];
+    }
+}
+
+- (void)_share:(id)sender {
+    if ([self.delegate respondsToSelector:@selector(lookupChatTableViewCell:)]) {
+        [self.delegate shareChatTableViewCell:self];
+    }
+}
+
+- (void)onItemLongTap:(UILongPressGestureRecognizer *)sender {
+    switch (sender.state) {
+        case UIGestureRecognizerStateBegan:{
+            
+            [self becomeFirstResponder];
+            
+            UIMenuController *menu = [UIMenuController sharedMenuController];
+            menu.menuItems = @[];
+            
+            [menu setTargetRect:sender.view.bounds inView:sender.view];
+            menu.arrowDirection = UIMenuControllerArrowDefault;
+            [menu update];
+            [menu setMenuVisible:YES animated:YES];
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 //- (void)setSelected:(BOOL)selected animated:(BOOL)animated {

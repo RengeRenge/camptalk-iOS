@@ -85,7 +85,10 @@
            continueLoad:(NS_NOESCAPE BOOL (^)(NSData * _Nonnull))continueLoad {
     if (async) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            
+            if ([self.rg_pathId isEqualToString:path]) {
+                return;
+            }
+            self.image = nil;
             [self rg_setPathId:path];
             
             dispatch_async(self.loadDataQueue, ^{

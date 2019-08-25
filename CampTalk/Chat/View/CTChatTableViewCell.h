@@ -9,6 +9,16 @@
 #import <UIKit/UIKit.h>
 #import "CTChatBubbleLabel.h"
 
+@class CTChatTableViewCell;
+
+@protocol CTChatTableViewCellActionDelegate <NSObject>
+
+- (void)deleteChatTableViewCell:(CTChatTableViewCell *)cell;
+- (void)lookupChatTableViewCell:(CTChatTableViewCell *)cell;
+- (void)shareChatTableViewCell:(CTChatTableViewCell *)cell;
+
+@end
+
 extern NSString *const CTChatTableViewCellId;
 
 @interface CTChatTableViewCell : UITableViewCell
@@ -18,6 +28,8 @@ extern NSString *const CTChatTableViewCellId;
 @property (weak, nonatomic) IBOutlet CTChatBubbleLabel *chatBubbleLabel;
 
 @property (copy, nonatomic) NSString *cellId;
+
+@property (nonatomic, weak) id <CTChatTableViewCellActionDelegate> delegate;
 
 @property (copy, nonatomic) UIImage *iconImage;
 

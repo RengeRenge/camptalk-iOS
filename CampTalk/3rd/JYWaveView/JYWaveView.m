@@ -50,7 +50,6 @@
         
         [self configWaveProperties];
         [self createWaves];
-        [self strat];
     }
     
     return self;
@@ -72,7 +71,7 @@
     _waveDisplayLink = nil;
     
     CGMutablePathRef path = CGPathCreateMutable();
-    CGPathAddLineToPoint(path, nil, waveWidth, self.bounds.size.height);
+    CGPathMoveToPoint(path, nil, waveWidth, self.bounds.size.height);
     CGPathAddLineToPoint(path, nil, 0, self.bounds.size.height);
     _frontWaveLayer.path = path;
     _insideWaveLayer.path = path;
