@@ -26,20 +26,32 @@
 
 #import "Bluuur.h"
 
-@interface RGImagePickerViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PHPhotoLibraryChangeObserver, UICollectionViewDataSourcePrefetching, RGImagePickerCellDelegate, RGImageGalleryDelegate>
+static PHImageRequestOptions *requestOptions = nil;
+
+@interface RGImagePickerViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UICollectionViewDataSourcePrefetching, PHPhotoLibraryChangeObserver, RGImagePickerCellDelegate, RGImageGalleryDelegate>
 
 @property (nonatomic, assign) BOOL needScrollToBottom;
+@property (nonatomic, assign) BOOL needRequestLoadStatus;
+@property (nonatomic, assign) BOOL needResetView;
+@property (nonatomic, assign) BOOL needSyncLoad;
 @property (nonatomic, strong) PHFetchResult<PHAsset *> *assets;
+
+@property (nonatomic, strong) PHCachingImageManager *imageManager;
+@property (nonatomic, assign) CGRect previousPreheatRect;
 
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, assign) CGSize itemSize;
+@property (nonatomic, strong) UIView *backgroundView;
+
 @property (nonatomic, assign) CGSize thumbSize;
+@property (nonatomic, assign) CGSize lowThumbSize;
 
 @property (nonatomic, strong) NSIndexPath *recordMaxIndexPath;
 
 @property (nonatomic, strong) RGImageGallery *imageGallery;
 
 @property (nonatomic, strong) UIToolbar *toolBar;
+@property (nonatomic, strong) UIToolbar *toolBarSafeArea;
 
 @property (nonatomic, strong) UIButton *toolBarLabel;
 @property (nonatomic, strong) UIButton *toolBarLabelGallery;
@@ -51,25 +63,42 @@
 
 @implementation RGImagePickerViewController
 
+#pragma mark - life cycle
+
+- (instancetype)init {
+    if (self = [super init]) {
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+//            requestOptions = [[PHImageRequestOptions alloc] init];
+//            requestOptions.resizeMode = PHImageRequestOptionsResizeModeFast;
+//            requestOptions.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+//            requestOptions.synchronous = NO;
+//            requestOptions.networkAccessAllowed = YES;
+        });
+    }
+    return self;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(__imagePickerCachePickPhotosHasChanged:) name:RGImagePickerCachePickPhotosHasChanged object:nil];
-    
-    [self.view addSubview:self.collectionView];
+    self.needRequestLoadStatus = YES;
     self.view.tintColor = [UIColor blackColor];
+    self.view.backgroundColor = [UIColor whiteColor];
     
     UIImage *image = [UIImage imageWithContentsOfFile:[CTUserConfig chatBackgroundImagePath]];
     UIImageView *imageView = [[UIImageView alloc] initWithImage:image];
     imageView.contentMode = UIViewContentModeScaleAspectFill;
     imageView.clipsToBounds = YES;
     
-    MLWBluuurView *backgroundView = [[MLWBluuurView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
-    backgroundView.blurRadius = 3.5;
-    backgroundView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    backgroundView.frame = imageView.bounds;
-    [imageView addSubview:backgroundView];
-    self.collectionView.backgroundView = imageView;
+    MLWBluuurView *bluuurView = [[MLWBluuurView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
+    bluuurView.blurRadius = 3.5;
+    bluuurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    bluuurView.frame = imageView.bounds;
+    [imageView addSubview:bluuurView];
+    self.backgroundView = imageView;
+    [self.view addSubview:self.backgroundView];
+    [self.view addSubview:self.collectionView];
     
     [self.collectionView registerClass:[RGImagePickerCell class] forCellWithReuseIdentifier:@"RGImagePickerCell"];
     self.collectionView.allowsMultipleSelection = self.cache.maxCount > 1;
@@ -77,7 +106,6 @@
     UIBarButtonItem *down = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(rg_dismiss)];
     self.navigationItem.rightBarButtonItem = down;
     self.navigationItem.backBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"" style:UIBarButtonItemStylePlain target:nil action:nil];
-    [self __configViewWithCollection:_collection];
     
     _imageGallery = [[RGImageGallery alloc] initWithPlaceHolder:[UIImage rg_imageWithName:@"sad"] andDelegate:self];
     _imageGallery.pushFromView = YES;
@@ -114,7 +142,47 @@
                                                              multiplier:1
                                                                constant:0]];
     }
+    [self __configViewWithCurrentCollection:NO];
+    [self setNeedScrollToBottom:YES];
 }
+
+- (void)viewWillLayoutSubviews {
+    [super viewWillLayoutSubviews];
+    [self __doLayout];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self __doLayout];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self setNeedsStatusBarAppearanceUpdate];
+    [self __scrollToBottomIfNeed];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [self.navigationController.presentingViewController setNeedsStatusBarAppearanceUpdate];
+}
+
+- (void)viewSafeAreaInsetsDidChange {
+    [super viewSafeAreaInsetsDidChange];
+    [self __configItemSize];
+    [self __doReloadData];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if ([PHPhotoLibrary authorizationStatus] != PHAuthorizationStatusAuthorized) {
+        return;
+    }
+    [self resetCachedAssets];
+    [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
+}
+
+#pragma mark - Getter
 
 - (UICollectionView *)collectionView {
     if (!_collectionView) {
@@ -122,11 +190,15 @@
         layout.minimumInteritemSpacing = 0.f;
         layout.minimumLineSpacing = 2.f;
         _collectionView = [[UICollectionView alloc] initWithFrame:self.view.bounds collectionViewLayout:layout];
+        _collectionView.backgroundColor = [UIColor clearColor];
         [self __configItemSize];
         _collectionView.delegate = self;
         _collectionView.dataSource = self;
         if (@available(iOS 10.0, *)) {
-            _collectionView.prefetchDataSource = self;
+//            _collectionView.prefetchDataSource = self;
+        }
+        if (@available(iOS 11.0, *)) {
+            _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAlways;
         }
     }
     return _collectionView;
@@ -149,39 +221,28 @@
     _assets = [PHAsset fetchAssetsInAssetCollection:_collection options:option];
     
     [[PHPhotoLibrary sharedPhotoLibrary] registerChangeObserver:self];
-    
-    if (self.isViewLoaded) {
-        [self __configViewWithCollection:_collection];
-    }
+    [self __configViewWithCurrentCollection:YES];
 }
 
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
-}
+#pragma mark - Config
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    _collectionView.contentInset = UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0);
-    _collectionView.scrollIndicatorInsets = _collectionView.contentInset;
-}
-
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-    
-    _collectionView.contentInset = UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0);
-    _collectionView.scrollIndicatorInsets = _collectionView.contentInset;
-    
+- (void)__doLayout {
     CGFloat recordHeight = self.collectionView.frame.size.height;
+    [_collectionView rg_setAdditionalContentInset:UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0) safeArea:self.rg_layoutSafeAreaInsets];
+    _collectionView.scrollIndicatorInsets = _collectionView.contentInset;
     _collectionView.frame = self.view.bounds;
+    _backgroundView.frame = self.view.bounds;
+    
+    [_collectionView rg_setAdditionalContentInset:UIEdgeInsetsMake(0, 0, self.toolBar.frame.size.height, 0) safeArea:self.rg_layoutSafeAreaInsets];
+    _collectionView.scrollIndicatorInsets = _collectionView.contentInset;
     
     if (recordHeight != self.view.bounds.size.height) {
         [self __configItemSize];
         [self __doReloadData];
     }
-    
-    if (!_needScrollToBottom) {
-        
+    if (_needScrollToBottom) {
+        [self __scrollViewToBottom];
+    } else {
         if (recordHeight != self.collectionView.frame.size.height) {
             
             if (!_recordMaxIndexPath) {
@@ -202,17 +263,22 @@
     }
 }
 
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self __scrollToBottomIfNeed];
-}
-
-- (void)__configViewWithCollection:(PHAssetCollection *)collection {
-    [self __doReloadData];
+- (void)__configViewWithCurrentCollection:(BOOL)scrollToBottom {
+    if (!self.isViewLoaded) {
+        return;
+    }
+    if (!_imageManager) {
+        _imageManager = (PHCachingImageManager *)[PHCachingImageManager new];
+        _imageManager.allowsCachingHighQualityImages = YES;
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(__imagePickerCachePickPhotosHasChanged:) name:RGImagePickerCachePickPhotosHasChanged object:nil];
+    }
+    [self resetCachedAssets];
     [self __configTitle];
-    [self setNeedScrollToBottom:YES];
-    [self __scrollToBottomIfNeed];
-    [self.view setNeedsLayout];
+    if (scrollToBottom) {
+        [self setNeedScrollToBottom:YES];
+        [self __doReloadData];
+        [self __scrollToBottomIfNeed];
+    }
 }
 
 - (void)__configTitle {
@@ -224,33 +290,61 @@
 
 - (void)__scrollToBottomIfNeed {
     if (_needScrollToBottom && _assets) {
-        [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.assets.count - 1 inSection:0] atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
+        if (_assets.count <= 0) {
+            _needScrollToBottom = NO;
+            return;
+        }
+        
+        self.collectionView.alpha = 0;
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+        [self __scrollViewToBottom];
+        
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.assets.count - 1 inSection:0] atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
+            self->_needScrollToBottom = NO;
+            
+            [UIView animateWithDuration:0.5 animations:^{
+                self.collectionView.alpha = 1;
+                self.needResetView = NO;
+                self.needSyncLoad = YES;
+                self.needRequestLoadStatus = YES;
+                [self __doReloadData];
+            } completion:^(BOOL finished) {
+                self.needResetView = YES;
+                self.needSyncLoad = NO;
+            }];
         });
-        _needScrollToBottom = NO;
     }
 }
 
-- (void)__configItemSize {
+- (void)__scrollViewToBottom {
+//    BOOL record = self.needRequestLoadStatus;
+    [self.collectionView rg_scrollViewToBottom:NO];
+//    self.needRequestLoadStatus = record;
+}
+
+- (void)__configItemSize {    
     CGFloat space = 2.f;
-    NSInteger count = _collectionView.bounds.size.width / (80 + space);
-    CGFloat width = _collectionView.bounds.size.width - (count > 0 ? (count - 1) * space : 0);
-    width = 1.f * width / count ;
+    CGRect bounds = self.rg_safeAreaBounds;
+    CGFloat contaiWidth = MIN(bounds.size.width, bounds.size.height);
+    NSInteger count = 4 ;
+    CGFloat width = contaiWidth - (count > 0 ? (count - 1) * space : 0);
+    width = 1.f * width / count;
+    
+//    if (width < 80) {
+//        contaiWidth = _collectionView.bounds.size.width;
+//        count = contaiWidth / (80 + space);
+//        width = contaiWidth - (count > 0 ? (count - 1) * space : 0);
+//        width = 1.f * width / count;
+//    }
     _itemSize = CGSizeMake(width, width);
-    _thumbSize = CGSizeMake(width * [UIScreen mainScreen].scale, width * [UIScreen mainScreen].scale);
+    _lowThumbSize = CGSizeMake(width, width);
+    width = floor(width * [UIScreen mainScreen].scale);
+    _thumbSize = CGSizeMake(width, width);
 }
 
 - (void)__down {
     [self.cache callBack:self];
-}
-
-- (void)__imagePickerCachePickPhotosHasChanged:(NSNotification *)noti {
-    if (self.navigationController.topViewController != self) {
-        [self __configViewWhenCacheChanged];
-        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__doReloadData) object:nil];
-        [self performSelector:@selector(__doReloadData) withObject:nil afterDelay:0.6];
-    }
 }
 
 - (void)__doReloadData {
@@ -274,20 +368,90 @@
     return _assets.count;
 }
 
+- (void)collectionView:(UICollectionView *)collectionView prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
+//    NSMutableArray *array = [NSMutableArray arrayWithCapacity:indexPaths.count];
+//    [indexPaths enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+//        [array addObject:self.assets[obj.row]];
+//    }];
+//    [self.imageManager startCachingImagesForAssets:array
+//                                        targetSize:self.lowThumbSize
+//                                       contentMode:PHImageContentModeAspectFill
+//                                           options:requestOptions];
+}
+
+- (void)collectionView:(UICollectionView *)collectionView cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
+//    NSMutableArray *array = [NSMutableArray arrayWithCapacity:indexPaths.count];
+//    [indexPaths enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+//        [array addObject:self.assets[obj.row]];
+//    }];
+//    [self.imageManager stopCachingImagesForAssets:array
+//                                       targetSize:self.lowThumbSize
+//                                      contentMode:PHImageContentModeAspectFill
+//                                          options:requestOptions];
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    self.needRequestLoadStatus = NO;
+    [self updateCachedAssets];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
+    [self __loadStatusWtihResetView:NO];
+}
+
+- (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView {
+    [self __loadStatusWtihResetView:NO];
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+    self.needRequestLoadStatus = NO;
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if (!decelerate) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__loadStatusWtihResetView:) object:@(NO)];
+        [self performSelector:@selector(__loadStatusWtihResetView:) withObject:@(NO) afterDelay:0.3];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    [self __loadStatusWtihResetView:NO];
+}
+
+- (void)__loadStatusWtihResetView:(BOOL)resetView {
+    self.needRequestLoadStatus = YES;
+    self.needResetView = resetView;
+    NSArray<__kindof UICollectionViewCell *> *visibleCells = self.collectionView.visibleCells;
+    NSArray<NSIndexPath *> *indexPathsForVisibleRows = self.collectionView.indexPathsForVisibleItems;
+    [visibleCells enumerateObjectsUsingBlock:^(RGImagePickerCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        obj.asset = nil;
+        [self __configCell:obj withIndexPath:indexPathsForVisibleRows[idx]];
+    }];
+}
+
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     RGImagePickerCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"RGImagePickerCell" forIndexPath:indexPath];
     cell.delegate = self;
     if (indexPath.row >= _assets.count) {
         return cell;
     }
-    PHAsset *photo = _assets[indexPath.row];
-    [cell setAsset:photo targetSize:_thumbSize cache:_cache];
+    if (!_needScrollToBottom) {
+        [self __configCell:cell withIndexPath:indexPath];
+    }
+    return cell;
+}
+
+- (void)__configCell:(RGImagePickerCell *)cell withIndexPath:(NSIndexPath *)indexPath {
     
-    if ([self.cache contain:photo]) {
-        [collectionView selectItemAtIndexPath:indexPath animated:NO scrollPosition:UICollectionViewScrollPositionNone];
+    PHAsset *asset = _assets[indexPath.row];
+    CGSize targetSize = _needRequestLoadStatus ? _thumbSize : _lowThumbSize;
+    [cell setAsset:asset photoManager:_imageManager options:requestOptions targetSize:targetSize cache:_cache sync:YES loadStatus:_needRequestLoadStatus resetView:_needResetView];
+    
+    if ([self.cache contain:asset]) {
+        [self.collectionView selectItemAtIndexPath:indexPath animated:NO scrollPosition:UICollectionViewScrollPositionNone];
         [cell setSelected:YES];
     } else {
-        [collectionView deselectItemAtIndexPath:indexPath animated:NO];
+        [self.collectionView deselectItemAtIndexPath:indexPath animated:NO];
         [cell setSelected:NO];
     }
     
@@ -300,7 +464,6 @@
     } else {
         cell.contentView.alpha = 1;
     }
-    return cell;
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
@@ -314,21 +477,6 @@
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
         [self performSelector:@selector(__recordMaxIndexPathIfNeed) withObject:nil afterDelay:0.3f inModes:@[NSRunLoopCommonModes]];
     }
-}
-
-- (void)__recordMaxIndexPathIfNeed {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
-    
-    [self.collectionView.indexPathsForVisibleItems enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        if (idx == 0) {
-            self.recordMaxIndexPath = obj;
-        } else {
-            if (self.recordMaxIndexPath.row < obj.row) {
-                self.recordMaxIndexPath = obj;
-            }
-        }
-    }];
-    _recordMaxIndexPath = _recordMaxIndexPath.copy;
 }
 
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath {
@@ -347,6 +495,21 @@
 
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldDeselectItemAtIndexPath:(NSIndexPath *)indexPath {
     return [self collectionView:collectionView shouldSelectItemAtIndexPath:indexPath];
+}
+
+- (void)__recordMaxIndexPathIfNeed {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__recordMaxIndexPathIfNeed) object:nil];
+    
+    [self.collectionView.indexPathsForVisibleItems enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx == 0) {
+            self.recordMaxIndexPath = obj;
+        } else {
+            if (self.recordMaxIndexPath.row < obj.row) {
+                self.recordMaxIndexPath = obj;
+            }
+        }
+    }];
+    _recordMaxIndexPath = _recordMaxIndexPath.copy;
 }
 
 - (void)__selectItemWithCurrentGalleryPage {
@@ -369,7 +532,7 @@
             [cell setSelected:NO animated:YES];
             [self.collectionView deselectItemAtIndexPath:indexPath animated:YES];
         } else {
-            [self.cache requestLoadStatusWithAsset:asset result:^(BOOL needLoad) {
+            [self.cache requestLoadStatusWithAsset:asset onlyCache:NO cacheSync:NO result:^(BOOL needLoad) {
                 if (needLoad) {
                     [RGImagePickerCell loadOriginalWithAsset:asset cache:self.cache updateCell:cell collectionView:self.collectionView progressHandler:nil completion:nil];
                 } else {
@@ -499,24 +662,6 @@
     UIBarButtonItem *downItem = array[4];
     downItem.enabled = self.cache.pickPhotos.count;
     return array;
-}
-
-#pragma mark - UICollectionViewDataSourcePrefetching
-
-- (void)collectionView:(UICollectionView *)collectionView prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
-    for (NSIndexPath *indexPath in indexPaths) {
-        [self.cache imageForAsset:_assets[indexPath.row] onlyCache:NO syncLoad:NO allowNet:YES targetSize:self.thumbSize completion:nil];
-    }
-}
-
-- (void)collectionView:(UICollectionView *)collectionView cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
-    for (NSIndexPath *indexPath in indexPaths) {
-        PHImageRequestID rgRequestId = _assets[indexPath.row].rgRequestId;
-//        NSLog(@"PH Cancel Id:[%d]", rgRequestId);
-        if (rgRequestId) {
-            [[PHCachingImageManager defaultManager] cancelImageRequest:rgRequestId];
-        }
-    }
 }
 
 #pragma mark - PHPhotoLibraryChangeObserver
@@ -683,20 +828,10 @@
     return nil;
 }
 
-- (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForPushAtIndex:(NSInteger)index {
+- (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForTransitionAtIndex:(NSInteger)index {
     if (index >= 0) {
         if (imageGallery.pushState == RGImageGalleryPushStatePushed) {
-            [CATransaction begin];
-            [CATransaction setDisableActions:YES];
-            if (imageGallery.pushState == RGImageGalleryPushStatePushed && index>=0) {
-                NSIndexPath *needShowIndexPath = [NSIndexPath indexPathForRow:index inSection:0];
-                if (![self.collectionView.indexPathsForVisibleItems containsObject:needShowIndexPath]) {
-                    [self.collectionView scrollToItemAtIndexPath:needShowIndexPath atScrollPosition:UICollectionViewScrollPositionCenteredVertically animated:NO];
-                }
-            }
-            [self.collectionView setNeedsLayout];
-            [self.collectionView layoutIfNeeded];
-            [CATransaction commit];
+            [self __scrollToIndex:index];
         }
         UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForRow:index inSection:0]];
         return cell;
@@ -715,11 +850,14 @@
 
 - (RGIMGalleryTransitionCompletion)imageGallery:(RGImageGallery *)imageGallery willPopToParentViewController:(UIViewController *)viewController {
     
-    UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForRow:imageGallery.page inSection:0]];
+    NSUInteger page = imageGallery.page;
+    [self __scrollToIndex:page];
+    
+    UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForRow:page inSection:0]];
     cell.contentView.alpha = 0;
     
     RGIMGalleryTransitionCompletion com = ^(BOOL flag) {
-        [self __doReloadData];
+        [self __loadStatusWtihResetView:NO];
     };
     
     return com;
@@ -734,6 +872,140 @@
         cell.contentView.alpha = 1;
     };
     return com;
+}
+
+- (void)__scrollToIndex:(NSUInteger)index {
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    NSIndexPath *needShowIndexPath = [NSIndexPath indexPathForRow:index inSection:0];
+    if (![self.collectionView.indexPathsForVisibleItems containsObject:needShowIndexPath]) {
+        [self.collectionView scrollToItemAtIndexPath:needShowIndexPath atScrollPosition:UICollectionViewScrollPositionCenteredVertically animated:NO];
+    }
+    [self.collectionView setNeedsLayout];
+    [self.collectionView layoutIfNeeded];
+    [CATransaction commit];
+}
+
+#pragma mark - RGImagePickerCachePickPhotosHasChanged
+
+- (void)__imagePickerCachePickPhotosHasChanged:(NSNotification *)noti {
+    if (self.navigationController.topViewController != self) {
+        [self __configViewWhenCacheChanged];
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__loadStatusWtihResetView:) object:@(NO)];
+        [self performSelector:@selector(__loadStatusWtihResetView:) withObject:@(NO) afterDelay:0.6];
+    }
+}
+
+#pragma mark - Asset Caching
+
+- (void)resetCachedAssets {
+    [self.imageManager stopCachingImagesForAllAssets];
+    self.previousPreheatRect = CGRectZero;
+}
+
+- (void)updateCachedAssets {
+    BOOL isViewVisible = [self isViewLoaded] && [[self view] window] != nil;
+    if (!isViewVisible) { return; }
+    
+    // 预加载区域是可显示区域的两倍
+    CGRect preheatRect = self.collectionView.bounds;
+    preheatRect = CGRectInset(preheatRect, 0.0f, -0.5f * CGRectGetHeight(preheatRect));
+    
+    // 比较是否显示的区域与之前预加载的区域有不同
+    CGFloat delta = ABS(CGRectGetMidY(preheatRect) - CGRectGetMidY(self.previousPreheatRect));
+    if (delta > CGRectGetHeight(self.collectionView.bounds) / 3.0f) {
+        
+        // 区分资源分别操作
+        NSMutableArray *addedIndexPaths = [NSMutableArray array];
+        NSMutableArray *removedIndexPaths = [NSMutableArray array];
+        
+        [self computeDifferenceBetweenRect:self.previousPreheatRect andRect:preheatRect removedHandler:^(CGRect removedRect) {
+            NSArray *indexPaths = [self indexPathsForElementsInCollectionView:self.collectionView rect:removedRect];
+            [removedIndexPaths addObjectsFromArray:indexPaths];
+        } addedHandler:^(CGRect addedRect) {
+            NSArray *indexPaths = [self indexPathsForElementsInCollectionView:self.collectionView rect:addedRect];
+            [addedIndexPaths addObjectsFromArray:indexPaths];
+        }];
+        
+        NSArray *assetsToStartCaching = [self assetsAtIndexPaths:addedIndexPaths];
+        NSArray *assetsToStopCaching = [self assetsAtIndexPaths:removedIndexPaths];
+        
+        // 更新缓存
+        [self.imageManager startCachingImagesForAssets:assetsToStartCaching
+                                            targetSize:self.lowThumbSize
+                                           contentMode:PHImageContentModeAspectFill
+                                               options:requestOptions];
+        [self.imageManager stopCachingImagesForAssets:assetsToStopCaching
+                                           targetSize:self.lowThumbSize
+                                          contentMode:PHImageContentModeAspectFill
+                                              options:requestOptions];
+        
+        // 存储预加载矩形已供比较
+        self.previousPreheatRect = preheatRect;
+    }
+}
+
+- (void)computeDifferenceBetweenRect:(CGRect)oldRect andRect:(CGRect)newRect removedHandler:(void (^)(CGRect removedRect))removedHandler addedHandler:(void (^)(CGRect addedRect))addedHandler {
+    if (CGRectIntersectsRect(newRect, oldRect)) {
+        CGFloat oldMaxY = CGRectGetMaxY(oldRect);
+        CGFloat oldMinY = CGRectGetMinY(oldRect);
+        CGFloat newMaxY = CGRectGetMaxY(newRect);
+        CGFloat newMinY = CGRectGetMinY(newRect);
+        
+        if (newMaxY > oldMaxY) {
+            CGRect rectToAdd = CGRectMake(newRect.origin.x, oldMaxY, newRect.size.width, (newMaxY - oldMaxY));
+            addedHandler(rectToAdd);
+        }
+        
+        if (oldMinY > newMinY) {
+            CGRect rectToAdd = CGRectMake(newRect.origin.x, newMinY, newRect.size.width, (oldMinY - newMinY));
+            addedHandler(rectToAdd);
+        }
+        
+        if (newMaxY < oldMaxY) {
+            CGRect rectToRemove = CGRectMake(newRect.origin.x, newMaxY, newRect.size.width, (oldMaxY - newMaxY));
+            removedHandler(rectToRemove);
+        }
+        
+        if (oldMinY < newMinY) {
+            CGRect rectToRemove = CGRectMake(newRect.origin.x, oldMinY, newRect.size.width, (newMinY - oldMinY));
+            removedHandler(rectToRemove);
+        }
+    } else {
+        addedHandler(newRect);
+        removedHandler(oldRect);
+    }
+}
+
+- (NSArray *)assetsAtIndexPaths:(NSArray *)indexPaths {
+    if (indexPaths.count == 0) { return nil; }
+    
+    NSMutableArray *assets = [NSMutableArray arrayWithCapacity:indexPaths.count];
+    for (NSIndexPath *indexPath in indexPaths) {
+        PHAsset *asset = self.assets[indexPath.item];
+        [assets addObject:asset];
+    }
+    
+    return assets;
+}
+
+- (NSArray *)indexPathsFromIndexes:(NSIndexSet *)indexSet section:(NSUInteger)section {
+    NSMutableArray *indexPaths = [NSMutableArray arrayWithCapacity:indexSet.count];
+    [indexSet enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL *stop) {
+        [indexPaths addObject:[NSIndexPath indexPathForItem:idx inSection:section]];
+    }];
+    return indexPaths;
+}
+
+- (NSArray *)indexPathsForElementsInCollectionView:(UICollectionView *)collection rect:(CGRect)rect {
+    NSArray *allLayoutAttributes = [collection.collectionViewLayout layoutAttributesForElementsInRect:rect];
+    if (allLayoutAttributes.count == 0) { return nil; }
+    NSMutableArray *indexPaths = [NSMutableArray arrayWithCapacity:allLayoutAttributes.count];
+    for (UICollectionViewLayoutAttributes *layoutAttributes in allLayoutAttributes) {
+        NSIndexPath *indexPath = layoutAttributes.indexPath;
+        [indexPaths addObject:indexPath];
+    }
+    return indexPaths;
 }
 
 @end

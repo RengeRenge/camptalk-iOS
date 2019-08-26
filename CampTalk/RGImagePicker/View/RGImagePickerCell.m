@@ -7,26 +7,22 @@
 //
 
 #import "RGImagePickerCell.h"
-//#import <RGUIKit/RGUIKit.h>
+#import <RGUIKit/RGUIKit.h>
 #import "RGImagePicker.h"
-
-static PHImageRequestOptions *__ctImagePickerOptions;
 
 @implementation RGImagePickerCell
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
-        self.layer.cornerRadius = 2.f;
-        self.clipsToBounds = YES;
-        self.contentView.backgroundColor = [UIColor clearColor];
+        self.contentView.backgroundColor = [UIColor whiteColor];
         [self.contentView addSubview:self.imageView];
         [self.contentView addSubview:self.selectedButton];
 //        [self.contentView.layer addSublayer:self.selectedLayer];
         
-        if (!self.supportForceTouch) {
+//        if (!self.supportForceTouch) {
             UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
             [self.contentView addGestureRecognizer:longPress];
-        }
+//        }
     }
     return self;
 }
@@ -80,7 +76,6 @@ static PHImageRequestOptions *__ctImagePickerOptions;
 - (void)layoutSubviews {
     [super layoutSubviews];
     _imageView.frame = self.contentView.bounds;
-    [self.contentView sendSubviewToBack:_imageView];
     
     CGRect frame = _selectedButton.frame;
     frame.origin.x = self.contentView.bounds.size.width - frame.size.width;
@@ -121,6 +116,7 @@ static PHImageRequestOptions *__ctImagePickerOptions;
         _imageView = [[UIImageView alloc] initWithFrame:self.contentView.bounds];
         _imageView.contentMode = UIViewContentModeScaleAspectFill;
         _imageView.clipsToBounds = YES;
+        _imageView.opaque = YES;
         
         self.imageViewMask.frame = _imageView.bounds;
         self.imageViewMask.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -134,58 +130,85 @@ static PHImageRequestOptions *__ctImagePickerOptions;
 - (UIView *)imageViewMask {
     if (!_imageViewMask) {
         _imageViewMask = [[UIView alloc] init];
+        _imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
     }
     return _imageViewMask;
 }
 
-- (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize cache:(RGImagePickerCache *)cache {
+- (void)setAsset:(PHAsset *)asset
+    photoManager:(PHCachingImageManager *)manager
+         options:(PHImageRequestOptions *)options
+      targetSize:(CGSize)targetSize
+           cache:(RGImagePickerCache *)cache
+            sync:(BOOL)sync
+      loadStatus:(BOOL)loadStatus
+       resetView:(BOOL)resetView {
     self.cache = cache;
     if (self.asset == asset || [self isCurrentAsset:asset]) {
         return;
     }
     self.asset = asset;
     
-    void(^didLoadImage)(UIImage *result) = ^(UIImage *result) {
+    // 因为加载完成的状态可以同步获得，所以先默认显示为未加载完成的状态，防止闪烁
+    if (resetView) {
+        self.imageViewMask.hidden = NO;
+        self.selectedLayer.hidden = YES;
+    }
+    
+    void(^loadImageFromManager)(UIImage *cacheImage)= ^(UIImage *cacheImage){
+        if (cacheImage) {
+            CGSize size = cacheImage.rg_pixSize;
+            if (size.width >= targetSize.width || size.height >= targetSize.height) {
+                [self __setImage:cacheImage withAsset:asset sync:sync loadStatus:loadStatus];
+                return;
+            }
+            if (CGSizeEqualToSize(size, CGSizeMake(asset.pixelWidth, asset.pixelHeight))) {
+                [self __setImage:cacheImage withAsset:asset sync:sync loadStatus:loadStatus];
+                return;
+            }
+        }
+        if (self.lastRequestId) {
+            [manager cancelImageRequest:self.lastRequestId];
+            self.lastRequestId = 0;
+        }
+        
+        __block BOOL getId = NO;
+        self.lastRequestId = [manager requestImageForAsset:asset targetSize:targetSize contentMode:PHImageContentModeDefault options:options resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
+            if (getId) {
+                self.lastRequestId = 0;
+            }
+            [self __setImage:result withAsset:asset sync:sync loadStatus:loadStatus];
+        }];
+        getId = YES;
+    };
+    
+    [self.cache imageForAsset:asset onlyCache:YES syncLoad:sync allowNet:NO targetSize:targetSize completion:^(UIImage * _Nonnull cacheImage) {
+        loadImageFromManager(cacheImage);
+    }];
+}
+
+- (void)__setImage:(UIImage *)image withAsset:(PHAsset *)asset sync:(BOOL)sync loadStatus:(BOOL)loadStatus {
+    if (![self isCurrentAsset:asset]) {
+        return;
+    }
+    
+    self.imageView.image = image;
+    
+    [self.cache addThumbCachePhoto:image forAsset:asset];
+    [self.cache requestLoadStatusWithAsset:asset onlyCache:!loadStatus cacheSync:sync result:^(BOOL needLoad) {
         if (![self isCurrentAsset:asset]) {
             return;
         }
-        self.imageView.image = result;
-        [self.cache requestLoadStatusWithAsset:asset result:^(BOOL needLoadWithAsset) {
-            if (![self isCurrentAsset:asset]) {
-                return;
-            }
-            [CATransaction begin];
-            [CATransaction setDisableActions:YES];
-            if (needLoadWithAsset) {
-                self.selectedLayer.strokeEnd = asset.rgLoadLargeImageProgress;
-            } else {
-                self.selectedLayer.strokeEnd = 1.f;
-            }
-            [CATransaction commit];
-            
-            if (needLoadWithAsset) {
-                self.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
-            } else {
-                self.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.0];
-            }
-            
-            if (self.asset == asset) {
-                if (self.imageView.image != result) {
-                    self.imageView.image = result;
-                }
-            }
-        }];
-    };
-    
-    // 因为加载完成的状态可以同步获得，所以先默认显示为未加载完成的状态，防止闪烁
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.imageViewMask.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.6];
-    self.selectedLayer.strokeEnd = 0;
-    [CATransaction commit];
-    
-    [cache imageForAsset:asset onlyCache:NO syncLoad:NO allowNet:YES targetSize:targetSize completion:^(UIImage * _Nonnull image) {
-        didLoadImage(image);
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        self.selectedLayer.hidden = NO;
+        if (needLoad) {
+            self.selectedLayer.strokeEnd = asset.rgLoadLargeImageProgress;
+        } else {
+            self.selectedLayer.strokeEnd = 1.f;
+        }
+        [CATransaction commit];
+        self.imageViewMask.hidden = !needLoad;
     }];
 }
 
@@ -215,8 +238,9 @@ static PHImageRequestOptions *__ctImagePickerOptions;
             }];
         }
         bCell.selectedLayer.strokeEnd = progress;
-    } completion:^(NSData * _Nullable imageData, NSError * _Nullable error) {
+    } completion:^(NSDictionary * _Nullable info, NSError * _Nullable error) {
         
+        NSData *imageData = info[RGImagePickerResourceData];
         BOOL isLoaded = (error == nil && imageData.length);
         [cache setLoadStatusCache:isLoaded forAsset:asset];
         
@@ -278,40 +302,40 @@ static PHImageRequestOptions *__ctImagePickerOptions;
     }
 }
 
-- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    [super touchesBegan:touches withEvent:event];
-    UITouch *touch = [touches allObjects].firstObject;
-    if (@available(iOS 9.0, *)) {
-        _lastTouchForce = touch.force;
-        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
-    }
-}
-
-- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    [super touchesMoved:touches withEvent:event];
-    UITouch *touch = [touches allObjects].firstObject;
-    if (@available(iOS 9.0, *)) {
-        _lastTouchForce = touch.force;
-        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
-    }
-}
-
-- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    [super touchesEnded:touches withEvent:event];
-    UITouch *touch = [touches allObjects].firstObject;
-    if (@available(iOS 9.0, *)) {
-        _lastTouchForce = touch.force;
-        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
-    }
-}
-
-- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    [super touchesCancelled:touches withEvent:event];
-    UITouch *touch = [touches allObjects].firstObject;
-    if (@available(iOS 9.0, *)) {
-        _lastTouchForce = touch.force;
-        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
-    }
-}
+//- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+//    [super touchesBegan:touches withEvent:event];
+//    UITouch *touch = [touches allObjects].firstObject;
+//    if (@available(iOS 9.0, *)) {
+//        _lastTouchForce = touch.force;
+//        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
+//    }
+//}
+//
+//- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+//    [super touchesMoved:touches withEvent:event];
+//    UITouch *touch = [touches allObjects].firstObject;
+//    if (@available(iOS 9.0, *)) {
+//        _lastTouchForce = touch.force;
+//        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
+//    }
+//}
+//
+//- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+//    [super touchesEnded:touches withEvent:event];
+//    UITouch *touch = [touches allObjects].firstObject;
+//    if (@available(iOS 9.0, *)) {
+//        _lastTouchForce = touch.force;
+//        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
+//    }
+//}
+//
+//- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+//    [super touchesCancelled:touches withEvent:event];
+//    UITouch *touch = [touches allObjects].firstObject;
+//    if (@available(iOS 9.0, *)) {
+//        _lastTouchForce = touch.force;
+//        [self.delegate imagePickerCell:self touchForce:touch.force maximumPossibleForce:touch.maximumPossibleForce];
+//    }
+//}
 
 @end

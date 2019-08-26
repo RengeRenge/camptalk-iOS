@@ -49,7 +49,6 @@ static CGFloat kBubbleLineWidth = 2.f;
 - (UIView *)backgroundView {
     if (!_backgroundView) {
         _backgroundView = [[UIView alloc] initWithFrame:self.bounds];
-        _backgroundView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
         _backgroundView.backgroundColor = [UIColor clearColor];
         [self addSubview:_backgroundView];
     }
@@ -79,7 +78,9 @@ static CGFloat kBubbleLineWidth = 2.f;
     [self sendSubviewToBack:self.contentView];
     [self sendSubviewToBack:self.backgroundView];
     
-    self.contentView.frame = UIEdgeInsetsInsetRect(self.bounds, [self contentViewEdge]);
+    UIEdgeInsets edge = [self contentViewEdge];
+    self.contentView.frame = UIEdgeInsetsInsetRect(self.bounds, edge);
+    self.backgroundView.frame = self.bounds;
 }
 
 - (UIBezierPath *)bubblePathWithSize:(CGSize)size {
@@ -141,7 +142,36 @@ static CGFloat kBubbleLineWidth = 2.f;
 }
 
 - (UIEdgeInsets)contentViewEdge {
-    if (_bubbleRightToLeft) {
+    return [self.class contentViewEdgeWithRightToLeft:_bubbleRightToLeft];
+}
+
+- (UIEdgeInsets)contentViewMargin {
+    UIEdgeInsets edge = self.contentViewEdge;
+    edge.top = -edge.top;
+    edge.left = -edge.left;
+    edge.bottom = -edge.bottom;
+    edge.right = -edge.right;
+    return edge;
+}
+
+- (CGRect)setBounds:(CGRect)bounds withCertainConentSize:(CGSize)conentSize {
+    UIEdgeInsets edge = self.contentViewEdge;
+    self.bounds =
+    CGRectMake(
+               bounds.origin.x,
+               bounds.origin.y,
+               conentSize.width+edge.left+edge.right,
+               conentSize.height+edge.top+edge.bottom
+               );
+    return self.bounds;
+}
+
+- (CGRect)setBoundsWithCertainConentSize:(CGSize)conentSize {
+    return [self setBounds:self.bounds withCertainConentSize:conentSize];
+}
+
++ (UIEdgeInsets)contentViewEdgeWithRightToLeft:(BOOL)rightToLeft {
+    if (rightToLeft) {
         return UIEdgeInsetsMake(kBubbleLineWidth , kBubbleLineWidth, kBubbleLineWidth, kBubbleLineWidth+9);
     }
     return UIEdgeInsetsMake(kBubbleLineWidth , 9+kBubbleLineWidth, kBubbleLineWidth, kBubbleLineWidth);

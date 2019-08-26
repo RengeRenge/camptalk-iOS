@@ -85,7 +85,6 @@
     NSError *error = nil;
     BOOL res = [fileManager createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:&error];
     if (res) {
-        NSLog(@"succeed");
         if (self.excludedFromBackup) {
             [self addSkipBackupAttributeToItemAtURL:[NSURL fileURLWithPath:directory]];
         }
@@ -118,7 +117,6 @@
     NSFileManager *fileManager = [NSFileManager defaultManager];
     BOOL res = [fileManager createFileAtPath:path contents:data attributes:nil];
     if (res) {
-        NSLog(@"succeed");
         if (self.excludedFromBackup) {
             [self addSkipBackupAttributeToItemAtURL:[NSURL fileURLWithPath:path]];
         }

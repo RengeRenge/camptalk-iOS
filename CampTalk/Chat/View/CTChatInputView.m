@@ -92,6 +92,7 @@ static CGFloat kSendButtonSide = 50.f;
     [self addSubview:_contentView];
     
     _actionButton = [[UIButton alloc] init];
+    _actionButton.transform = CGAffineTransformMakeScale(-1, 1);
 //    [_actionButton setImage:[UIImage imageNamed:@"fuzi"] forState:UIControlStateNormal];
     _actionButton.imageView.contentMode = UIViewContentModeScaleAspectFit;
     [_actionButton addTarget:self action:@selector(actionButtonTouchUpInside:) forControlEvents:UIControlEventTouchUpInside];

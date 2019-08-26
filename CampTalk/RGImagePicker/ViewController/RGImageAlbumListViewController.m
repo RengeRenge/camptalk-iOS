@@ -99,7 +99,16 @@
     
     UIBarButtonItem *down = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(rg_dismiss)];
     self.navigationItem.rightBarButtonItem = down;
-    [self loadData];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self setNeedsStatusBarAppearanceUpdate];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [self.navigationController.presentingViewController setNeedsStatusBarAppearanceUpdate];
 }
 
 - (void)dealloc {

@@ -8,6 +8,8 @@
 
 #import "RGMessage.h"
 #import "RGRealmManager.h"
+#import "CTFileManger.h"
+#import "CTUserConfig.h"
 
 @implementation RGMessage
 
@@ -58,6 +60,34 @@
     
     [data insertObject:model atIndex:data.count - 3];
     return data;
+}
+
+- (BOOL)hasImage {
+    if (self.thumbUrl.length) {
+        return YES;
+    }
+    return NO;
+}
+
+- (BOOL)isNetImage {
+    NSURL *url = [NSURL URLWithString:self.thumbUrl];
+    if ([url.scheme hasPrefix:@"http"]) {
+        return YES;
+    }
+    return NO;
+}
+
+- (NSURL *)imageUrlForThumb:(BOOL)thumb {
+    if (!self.hasImage) {
+        return [NSURL new];
+    }
+    NSString *urlString = thumb?self.thumbUrl:self.originalImageUrl;
+    if (self.isNetImage) {
+        return [NSURL URLWithString:urlString];
+    } else {
+        NSString *path = [CTFileManger.cacheManager pathWithFileName:urlString folderName:UCChatDataFolderName];
+        return [NSURL fileURLWithPath:path];
+    }
 }
 
 @end

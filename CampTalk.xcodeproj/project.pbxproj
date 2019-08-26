@@ -75,6 +75,8 @@
 		E684BCF420A6FD3A00C3E973 /* camp07.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF220A6FD3900C3E973 /* camp07.gif */; };
 		E684BCF620A700A000C3E973 /* yuru_camp_login.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF520A7009F00C3E973 /* yuru_camp_login.gif */; };
 		E684BCF720A700A000C3E973 /* yuru_camp_login.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF520A7009F00C3E973 /* yuru_camp_login.gif */; };
+		E6A2D52E2318AFF9003908A5 /* CTBubbleImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */; };
+		E6A2D52F2318AFF9003908A5 /* CTBubbleImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */; };
 		E6AA7B81230FE7C9002CB741 /* RGRealmManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E6AA7B80230FE7C9002CB741 /* RGRealmManager.m */; };
 		E6AA7B82230FE7C9002CB741 /* RGRealmManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E6AA7B80230FE7C9002CB741 /* RGRealmManager.m */; };
 		E6AA7B882310BEE0002CB741 /* RGMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 9E72766A208A23D600FE9454 /* RGMessage.m */; };
@@ -119,6 +121,26 @@
 		E6FBE92323121F230055DB36 /* WeakProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91823121F230055DB36 /* WeakProxy.m */; };
 		E6FBE92623121F230055DB36 /* JYWaveView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91E23121F230055DB36 /* JYWaveView.m */; };
 		E6FBE92723121F230055DB36 /* JYWaveView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91E23121F230055DB36 /* JYWaveView.m */; };
+		E6FBE92C2312B10C0055DB36 /* CTImageClassifyTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE92B2312B10C0055DB36 /* CTImageClassifyTableViewController.m */; };
+		E6FBE92D2312B10C0055DB36 /* CTImageClassifyTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE92B2312B10C0055DB36 /* CTImageClassifyTableViewController.m */; };
+		E6FBE93A2312D31E0055DB36 /* XJWeakScriptMessageDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE9312312D31E0055DB36 /* XJWeakScriptMessageDelegate.m */; };
+		E6FBE93B2312D31E0055DB36 /* XJWeakScriptMessageDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE9312312D31E0055DB36 /* XJWeakScriptMessageDelegate.m */; };
+		E6FBE93C2312D31E0055DB36 /* XJWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE9322312D31E0055DB36 /* XJWebViewController.m */; };
+		E6FBE93D2312D31E0055DB36 /* XJWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE9322312D31E0055DB36 /* XJWebViewController.m */; };
+		E6FBE93E2312D31E0055DB36 /* webVC-refresh@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9342312D31E0055DB36 /* webVC-refresh@3x.png */; };
+		E6FBE93F2312D31E0055DB36 /* webVC-refresh@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9342312D31E0055DB36 /* webVC-refresh@3x.png */; };
+		E6FBE9402312D31E0055DB36 /* webVC-more@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9352312D31E0055DB36 /* webVC-more@2x.png */; };
+		E6FBE9412312D31E0055DB36 /* webVC-more@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9352312D31E0055DB36 /* webVC-more@2x.png */; };
+		E6FBE9422312D31E0055DB36 /* webVC-more@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9362312D31E0055DB36 /* webVC-more@3x.png */; };
+		E6FBE9432312D31E0055DB36 /* webVC-more@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9362312D31E0055DB36 /* webVC-more@3x.png */; };
+		E6FBE9442312D31E0055DB36 /* webVC-refresh@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9372312D31E0055DB36 /* webVC-refresh@2x.png */; };
+		E6FBE9452312D31E0055DB36 /* webVC-refresh@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9372312D31E0055DB36 /* webVC-refresh@2x.png */; };
+		E6FBE9462312D31E0055DB36 /* webVC-safari@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9382312D31E0055DB36 /* webVC-safari@2x.png */; };
+		E6FBE9472312D31E0055DB36 /* webVC-safari@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9382312D31E0055DB36 /* webVC-safari@2x.png */; };
+		E6FBE9482312D31E0055DB36 /* webVC-safari@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9392312D31E0055DB36 /* webVC-safari@3x.png */; };
+		E6FBE9492312D31E0055DB36 /* webVC-safari@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6FBE9392312D31E0055DB36 /* webVC-safari@3x.png */; };
+		E6FBE94C2312D3720055DB36 /* XJMenuTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE94B2312D3720055DB36 /* XJMenuTableViewController.m */; };
+		E6FBE94D2312D3720055DB36 /* XJMenuTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE94B2312D3720055DB36 /* XJMenuTableViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -196,7 +218,7 @@
 		E61DA3E022F6928B0008DC68 /* sad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = sad.png; sourceTree = "<group>"; };
 		E6312B6920A0565F0090054C /* RGImagePickerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGImagePickerViewController.h; sourceTree = "<group>"; };
 		E6312B6A20A0565F0090054C /* RGImagePickerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RGImagePickerViewController.m; sourceTree = "<group>"; };
-		E6312B6E20A0619F0090054C /* RGImageAlbumListViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGImageAlbumListViewController.h; sourceTree = "<group>"; };
+		E6312B6E20A0619F0090054C /* RGImageAlbumListViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RGImageAlbumListViewController.h; path = ../RGImageAlbumListViewController.h; sourceTree = "<group>"; };
 		E6312B6F20A0619F0090054C /* RGImageAlbumListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RGImageAlbumListViewController.m; sourceTree = "<group>"; };
 		E6312BB220A28C670090054C /* CTUserConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTUserConfig.h; sourceTree = "<group>"; };
 		E6312BB320A28C670090054C /* CTUserConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTUserConfig.m; sourceTree = "<group>"; };
@@ -214,6 +236,8 @@
 		E671495620B50971009070D0 /* corver1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = corver1.jpg; sourceTree = "<group>"; };
 		E684BCF220A6FD3900C3E973 /* camp07.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = camp07.gif; sourceTree = "<group>"; };
 		E684BCF520A7009F00C3E973 /* yuru_camp_login.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = yuru_camp_login.gif; sourceTree = "<group>"; };
+		E6A2D52C2318AFF9003908A5 /* CTBubbleImageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTBubbleImageView.h; sourceTree = "<group>"; };
+		E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTBubbleImageView.m; sourceTree = "<group>"; };
 		E6AA7B7F230FE7C9002CB741 /* RGRealmManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGRealmManager.h; sourceTree = "<group>"; };
 		E6AA7B80230FE7C9002CB741 /* RGRealmManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RGRealmManager.m; sourceTree = "<group>"; };
 		E6AA7B8423109DD3002CB741 /* RGMessageViewModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGMessageViewModel.h; sourceTree = "<group>"; };
@@ -251,6 +275,20 @@
 		E6FBE91923121F230055DB36 /* JYWaveView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JYWaveView.h; sourceTree = "<group>"; };
 		E6FBE91B23121F230055DB36 /* WeakProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakProxy.h; sourceTree = "<group>"; };
 		E6FBE91E23121F230055DB36 /* JYWaveView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JYWaveView.m; sourceTree = "<group>"; };
+		E6FBE92A2312B10C0055DB36 /* CTImageClassifyTableViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTImageClassifyTableViewController.h; sourceTree = "<group>"; };
+		E6FBE92B2312B10C0055DB36 /* CTImageClassifyTableViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTImageClassifyTableViewController.m; sourceTree = "<group>"; };
+		E6FBE92F2312D31E0055DB36 /* XJWeakScriptMessageDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XJWeakScriptMessageDelegate.h; sourceTree = "<group>"; };
+		E6FBE9302312D31E0055DB36 /* XJWebViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XJWebViewController.h; sourceTree = "<group>"; };
+		E6FBE9312312D31E0055DB36 /* XJWeakScriptMessageDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XJWeakScriptMessageDelegate.m; sourceTree = "<group>"; };
+		E6FBE9322312D31E0055DB36 /* XJWebViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XJWebViewController.m; sourceTree = "<group>"; };
+		E6FBE9342312D31E0055DB36 /* webVC-refresh@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "webVC-refresh@3x.png"; sourceTree = "<group>"; };
+		E6FBE9352312D31E0055DB36 /* webVC-more@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "webVC-more@2x.png"; sourceTree = "<group>"; };
+		E6FBE9362312D31E0055DB36 /* webVC-more@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "webVC-more@3x.png"; sourceTree = "<group>"; };
+		E6FBE9372312D31E0055DB36 /* webVC-refresh@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "webVC-refresh@2x.png"; sourceTree = "<group>"; };
+		E6FBE9382312D31E0055DB36 /* webVC-safari@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "webVC-safari@2x.png"; sourceTree = "<group>"; };
+		E6FBE9392312D31E0055DB36 /* webVC-safari@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "webVC-safari@3x.png"; sourceTree = "<group>"; };
+		E6FBE94A2312D3720055DB36 /* XJMenuTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XJMenuTableViewController.h; sourceTree = "<group>"; };
+		E6FBE94B2312D3720055DB36 /* XJMenuTableViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XJMenuTableViewController.m; sourceTree = "<group>"; };
 		EF0403BB5F62FA71A469BBD6 /* Pods_CommonPod_CampTalk.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CommonPod_CampTalk.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -309,6 +347,7 @@
 		6BD7662A208504E3003FD599 /* CampTalk */ = {
 			isa = PBXGroup;
 			children = (
+				E6FBE92E2312D31E0055DB36 /* WebViewController */,
 				E618C3A820A5F9170072B6F8 /* 3rd */,
 				9E72766D208A36B500FE9454 /* Base */,
 				E6312BB120A2891D0090054C /* Config */,
@@ -316,7 +355,7 @@
 				E618C39B20A5EDF20072B6F8 /* Login */,
 				6BD76645208508E9003FD599 /* Category */,
 				E6312BC420A2EC830090054C /* File */,
-				E6312B6D20A060C60090054C /* ImagePicker */,
+				E6312B6D20A060C60090054C /* RGImagePicker */,
 				6BD7664120850841003FD599 /* Resource */,
 				6BD7662B208504E3003FD599 /* AppDelegate.h */,
 				6BD7662C208504E3003FD599 /* AppDelegate.m */,
@@ -423,6 +462,8 @@
 				E6B7F45E2093DE2B00918BC8 /* CTCameraView.m */,
 				E6B7F4892096869800918BC8 /* CTMusicButton.h */,
 				E6B7F48A2096869800918BC8 /* CTMusicButton.m */,
+				E6A2D52C2318AFF9003908A5 /* CTBubbleImageView.h */,
+				E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -434,6 +475,8 @@
 				E657C831218954CD007DE710 /* CTChatListTableViewController.m */,
 				9E7276422088F3B200FE9454 /* CTChatTableViewController.h */,
 				9E7276432088F3B200FE9454 /* CTChatTableViewController.m */,
+				E6FBE92A2312B10C0055DB36 /* CTImageClassifyTableViewController.h */,
+				E6FBE92B2312B10C0055DB36 /* CTImageClassifyTableViewController.m */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -502,23 +545,19 @@
 			path = FLAnimatedImage;
 			sourceTree = "<group>";
 		};
-		E6312B6D20A060C60090054C /* ImagePicker */ = {
+		E6312B6D20A060C60090054C /* RGImagePicker */ = {
 			isa = PBXGroup;
 			children = (
-				E6D3BAE622F5325200A6E595 /* ImageGallery */,
+				E6A2D52623177D43003908A5 /* View */,
+				E6A2D52723177D5C003908A5 /* ViewController */,
+				E6D3BAE622F5325200A6E595 /* RGImageGallery */,
 				E6D3BAD222F2F7F900A6E595 /* RGImagePickerConst.h */,
 				E6D3BACE22F2F48900A6E595 /* RGImagePicker.h */,
 				E6D3BACF22F2F48900A6E595 /* RGImagePicker.m */,
-				E6312B6920A0565F0090054C /* RGImagePickerViewController.h */,
-				E6312B6A20A0565F0090054C /* RGImagePickerViewController.m */,
-				E6D3BAD622F3D25C00A6E595 /* RGImagePickerCell.h */,
-				E6D3BAD722F3D25C00A6E595 /* RGImagePickerCell.m */,
-				E6312B6E20A0619F0090054C /* RGImageAlbumListViewController.h */,
-				E6312B6F20A0619F0090054C /* RGImageAlbumListViewController.m */,
 				E6D3BACA22F2F2BE00A6E595 /* RGImagePickerCache.h */,
 				E6D3BACB22F2F2BE00A6E595 /* RGImagePickerCache.m */,
 			);
-			path = ImagePicker;
+			path = RGImagePicker;
 			sourceTree = "<group>";
 		};
 		E6312BB120A2891D0090054C /* Config */ = {
@@ -557,6 +596,26 @@
 			path = File;
 			sourceTree = "<group>";
 		};
+		E6A2D52623177D43003908A5 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				E6D3BAD622F3D25C00A6E595 /* RGImagePickerCell.h */,
+				E6D3BAD722F3D25C00A6E595 /* RGImagePickerCell.m */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		E6A2D52723177D5C003908A5 /* ViewController */ = {
+			isa = PBXGroup;
+			children = (
+				E6312B6920A0565F0090054C /* RGImagePickerViewController.h */,
+				E6312B6A20A0565F0090054C /* RGImagePickerViewController.m */,
+				E6312B6E20A0619F0090054C /* RGImageAlbumListViewController.h */,
+				E6312B6F20A0619F0090054C /* RGImageAlbumListViewController.m */,
+			);
+			path = ViewController;
+			sourceTree = "<group>";
+		};
 		E6AA7B7E230FE78E002CB741 /* RGRealm */ = {
 			isa = PBXGroup;
 			children = (
@@ -593,13 +652,13 @@
 			path = UINavigationItem;
 			sourceTree = "<group>";
 		};
-		E6D3BAE622F5325200A6E595 /* ImageGallery */ = {
+		E6D3BAE622F5325200A6E595 /* RGImageGallery */ = {
 			isa = PBXGroup;
 			children = (
 				E6D3BAE822F5326200A6E595 /* RGImageGallery.h */,
 				E6D3BAE722F5326200A6E595 /* RGImageGallery.m */,
 			);
-			path = ImageGallery;
+			path = RGImageGallery;
 			sourceTree = "<group>";
 		};
 		E6FA149E20BEEC1000F097C8 /* Frameworks */ = {
@@ -621,6 +680,33 @@
 				E6FBE91823121F230055DB36 /* WeakProxy.m */,
 			);
 			path = JYWaveView;
+			sourceTree = "<group>";
+		};
+		E6FBE92E2312D31E0055DB36 /* WebViewController */ = {
+			isa = PBXGroup;
+			children = (
+				E6FBE9332312D31E0055DB36 /* Resource */,
+				E6FBE92F2312D31E0055DB36 /* XJWeakScriptMessageDelegate.h */,
+				E6FBE9312312D31E0055DB36 /* XJWeakScriptMessageDelegate.m */,
+				E6FBE9302312D31E0055DB36 /* XJWebViewController.h */,
+				E6FBE9322312D31E0055DB36 /* XJWebViewController.m */,
+				E6FBE94A2312D3720055DB36 /* XJMenuTableViewController.h */,
+				E6FBE94B2312D3720055DB36 /* XJMenuTableViewController.m */,
+			);
+			path = WebViewController;
+			sourceTree = "<group>";
+		};
+		E6FBE9332312D31E0055DB36 /* Resource */ = {
+			isa = PBXGroup;
+			children = (
+				E6FBE9342312D31E0055DB36 /* webVC-refresh@3x.png */,
+				E6FBE9352312D31E0055DB36 /* webVC-more@2x.png */,
+				E6FBE9362312D31E0055DB36 /* webVC-more@3x.png */,
+				E6FBE9372312D31E0055DB36 /* webVC-refresh@2x.png */,
+				E6FBE9382312D31E0055DB36 /* webVC-safari@2x.png */,
+				E6FBE9392312D31E0055DB36 /* webVC-safari@3x.png */,
+			);
+			path = Resource;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -712,9 +798,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				E61DA3E122F6928B0008DC68 /* sad.png in Resources */,
+				E6FBE93E2312D31E0055DB36 /* webVC-refresh@3x.png in Resources */,
 				6BD76638208504E3003FD599 /* LaunchScreen.storyboard in Resources */,
 				6BD766BA208515B8003FD599 /* linJiang.m4a in Resources */,
+				E6FBE9442312D31E0055DB36 /* webVC-refresh@2x.png in Resources */,
 				E6D3BAE422F4123300A6E595 /* 8bit2.jpg in Resources */,
+				E6FBE9422312D31E0055DB36 /* webVC-more@3x.png in Resources */,
 				E6D3BAE122F40DA600A6E595 /* 8bit.jpg in Resources */,
 				E684BCF620A700A000C3E973 /* yuru_camp_login.gif in Resources */,
 				6BD76635208504E3003FD599 /* Assets.xcassets in Resources */,
@@ -723,11 +812,14 @@
 				E684BCF320A6FD3A00C3E973 /* camp07.gif in Resources */,
 				E61DA3DB22F645920008DC68 /* fuzi_hd.png in Resources */,
 				E657C840218981F9007DE710 /* chat_list_bg.png in Resources */,
+				E6FBE9402312D31E0055DB36 /* webVC-more@2x.png in Resources */,
 				E657C83D21897EB3007DE710 /* miziha.JPG in Resources */,
 				E6E05AD7209C358C00C54A24 /* chatBg_1.jpg in Resources */,
 				9E7276512088FEBE00FE9454 /* CTChatTableViewCell.xib in Resources */,
+				E6FBE9482312D31E0055DB36 /* webVC-safari@3x.png in Resources */,
 				6BD76633208504E3003FD599 /* Main.storyboard in Resources */,
 				E6D3BADE22F40B0000A6E595 /* fire.gif in Resources */,
+				E6FBE9462312D31E0055DB36 /* webVC-safari@2x.png in Resources */,
 				E671495720B50971009070D0 /* corver1.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -737,9 +829,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				E61DA3E222F6928B0008DC68 /* sad.png in Resources */,
+				E6FBE93F2312D31E0055DB36 /* webVC-refresh@3x.png in Resources */,
 				6BD766AE20850E11003FD599 /* LaunchScreen.storyboard in Resources */,
 				6BD766BB208515B9003FD599 /* linJiang.m4a in Resources */,
+				E6FBE9452312D31E0055DB36 /* webVC-refresh@2x.png in Resources */,
 				E6D3BAE522F4123300A6E595 /* 8bit2.jpg in Resources */,
+				E6FBE9432312D31E0055DB36 /* webVC-more@3x.png in Resources */,
 				E6D3BAE222F40DA600A6E595 /* 8bit.jpg in Resources */,
 				E684BCF720A700A000C3E973 /* yuru_camp_login.gif in Resources */,
 				6BD766AF20850E11003FD599 /* Assets.xcassets in Resources */,
@@ -748,11 +843,14 @@
 				E684BCF420A6FD3A00C3E973 /* camp07.gif in Resources */,
 				E61DA3DC22F645920008DC68 /* fuzi_hd.png in Resources */,
 				E657C841218981F9007DE710 /* chat_list_bg.png in Resources */,
+				E6FBE9412312D31E0055DB36 /* webVC-more@2x.png in Resources */,
 				E6E05AD8209C358C00C54A24 /* chatBg_1.jpg in Resources */,
 				9E7276522088FEBE00FE9454 /* CTChatTableViewCell.xib in Resources */,
 				6BD766B120850E11003FD599 /* Main.storyboard in Resources */,
+				E6FBE9492312D31E0055DB36 /* webVC-safari@3x.png in Resources */,
 				E671495820B50971009070D0 /* corver1.jpg in Resources */,
 				E6D3BADF22F40B0000A6E595 /* fire.gif in Resources */,
+				E6FBE9472312D31E0055DB36 /* webVC-safari@2x.png in Resources */,
 				E657C83E21897F3C007DE710 /* miziha.JPG in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -871,7 +969,9 @@
 				9E7276442088F3B300FE9454 /* CTChatTableViewController.m in Sources */,
 				E6312BC720A2ECA60090054C /* CTFileManger.m in Sources */,
 				E6B7F4792094468700918BC8 /* UINavigationItem+Gesture.m in Sources */,
+				E6FBE94C2312D3720055DB36 /* XJMenuTableViewController.m in Sources */,
 				E6D3BACC22F2F2BE00A6E595 /* RGImagePickerCache.m in Sources */,
+				E6FBE93A2312D31E0055DB36 /* XJWeakScriptMessageDelegate.m in Sources */,
 				E6D3BAF122F5B55300A6E595 /* UIImageView+RGGif.m in Sources */,
 				E6AA7B8A2310BEFD002CB741 /* RGMessageViewModel.m in Sources */,
 				E6035A17209BF9AB00A6C6CA /* RGBubbleView.m in Sources */,
@@ -883,14 +983,17 @@
 				9E72764B2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765520896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
 				E6D3BAD822F3D25C00A6E595 /* RGImagePickerCell.m in Sources */,
+				E6FBE93C2312D31E0055DB36 /* XJWebViewController.m in Sources */,
 				E6FBE92223121F230055DB36 /* WeakProxy.m in Sources */,
 				E618C39E20A5EE4D0072B6F8 /* CTLoginViewController.m in Sources */,
 				E6312BB420A28C670090054C /* CTUserConfig.m in Sources */,
 				9E727675208C13BF00FE9454 /* CTChatInputView.m in Sources */,
 				9E72767D208DBE7D00FE9454 /* CTStubbornView.m in Sources */,
 				E64713532096EC1700A304BC /* UIViewController+DragBarItem.m in Sources */,
+				E6FBE92C2312B10C0055DB36 /* CTImageClassifyTableViewController.m in Sources */,
 				E6312BBE20A290DA0090054C /* MLWBluuurView.m in Sources */,
 				E6B7F48B2096869800918BC8 /* CTMusicButton.m in Sources */,
+				E6A2D52E2318AFF9003908A5 /* CTBubbleImageView.m in Sources */,
 				E6AA7B882310BEE0002CB741 /* RGMessage.m in Sources */,
 				E6FBE92623121F230055DB36 /* JYWaveView.m in Sources */,
 				E6AA7B8F2310CA92002CB741 /* RGLoginManager.m in Sources */,
@@ -914,7 +1017,9 @@
 				9E7276452088F3B300FE9454 /* CTChatTableViewController.m in Sources */,
 				E6312BC820A2ECA60090054C /* CTFileManger.m in Sources */,
 				E6B7F47A2094468700918BC8 /* UINavigationItem+Gesture.m in Sources */,
+				E6FBE94D2312D3720055DB36 /* XJMenuTableViewController.m in Sources */,
 				E6D3BACD22F2F2BE00A6E595 /* RGImagePickerCache.m in Sources */,
+				E6FBE93B2312D31E0055DB36 /* XJWeakScriptMessageDelegate.m in Sources */,
 				E6D3BAF222F5B55300A6E595 /* UIImageView+RGGif.m in Sources */,
 				E6AA7B8B2310BEFE002CB741 /* RGMessageViewModel.m in Sources */,
 				E6035A18209BF9AB00A6C6CA /* RGBubbleView.m in Sources */,
@@ -926,14 +1031,17 @@
 				9E72764C2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765620896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
 				E6D3BAD922F3D25C00A6E595 /* RGImagePickerCell.m in Sources */,
+				E6FBE93D2312D31E0055DB36 /* XJWebViewController.m in Sources */,
 				E6FBE92323121F230055DB36 /* WeakProxy.m in Sources */,
 				E618C39F20A5EE4D0072B6F8 /* CTLoginViewController.m in Sources */,
 				E6312BB520A28C670090054C /* CTUserConfig.m in Sources */,
 				9E727676208C13BF00FE9454 /* CTChatInputView.m in Sources */,
 				9E72767E208DBE7D00FE9454 /* CTStubbornView.m in Sources */,
 				E64713542096EC1700A304BC /* UIViewController+DragBarItem.m in Sources */,
+				E6FBE92D2312B10C0055DB36 /* CTImageClassifyTableViewController.m in Sources */,
 				E6312BBF20A290DA0090054C /* MLWBluuurView.m in Sources */,
 				E6B7F48C2096869800918BC8 /* CTMusicButton.m in Sources */,
+				E6A2D52F2318AFF9003908A5 /* CTBubbleImageView.m in Sources */,
 				E6AA7B892310BEE1002CB741 /* RGMessage.m in Sources */,
 				E6FBE92723121F230055DB36 /* JYWaveView.m in Sources */,
 				E6AA7B902310CA92002CB741 /* RGLoginManager.m in Sources */,

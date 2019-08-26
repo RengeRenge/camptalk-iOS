@@ -28,7 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIView *imageViewMask;
 
 @property (nonatomic, strong) RGImagePickerCache *cache;
-@property (nonatomic, strong) PHAsset *asset;
+@property (nonatomic, strong, nullable) PHAsset *asset;
 
 @property (nonatomic, assign) PHImageRequestID lastRequestId;
 
@@ -46,7 +46,14 @@ NS_ASSUME_NONNULL_BEGIN
               progressHandler:(void(^_Nullable)(double progress))progressHandler
                    completion:(void (^_Nullable)(NSData *_Nullable imageData, NSError *_Nullable error))completion;
 
-- (void)setAsset:(PHAsset *)asset targetSize:(CGSize)targetSize cache:(RGImagePickerCache *)cache;
+- (void)setAsset:(PHAsset *)asset
+    photoManager:(PHCachingImageManager *)manager
+         options:(PHImageRequestOptions *)options
+      targetSize:(CGSize)targetSize
+           cache:(RGImagePickerCache *)cache
+            sync:(BOOL)sync
+      loadStatus:(BOOL)loadStatus
+       resetView:(BOOL)resetView;
 
 - (BOOL)isCurrentAsset:(PHAsset *)asset;
 

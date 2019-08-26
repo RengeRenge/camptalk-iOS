@@ -8,6 +8,7 @@
 
 #import <UIKit/UIKit.h>
 #import "CTChatBubbleLabel.h"
+#import "CTBubbleImageView.h"
 
 @class CTChatTableViewCell;
 
@@ -23,7 +24,7 @@ extern NSString *const CTChatTableViewCellId;
 
 @interface CTChatTableViewCell : UITableViewCell
 
-@property (weak, nonatomic) IBOutlet UIImageView *thumbView;
+@property (weak, nonatomic) IBOutlet CTBubbleImageView *thumbWapper;
 
 @property (weak, nonatomic) IBOutlet CTChatBubbleLabel *chatBubbleLabel;
 
@@ -36,6 +37,7 @@ extern NSString *const CTChatTableViewCellId;
 @property (assign, nonatomic) BOOL myDirection;
 
 @property (assign, nonatomic) BOOL displayThumb;
+@property (assign, nonatomic) BOOL displayLocalThumb;
 @property (assign, nonatomic) CGFloat loadThumbProresss;
 @property (assign, nonatomic) CGSize thumbPixSize;
 
@@ -47,5 +49,6 @@ extern NSString *const CTChatTableViewCellId;
 + (CGFloat)heightWithThumbSize:(CGSize)thumbSize tableView:(UITableView *)tableView;
 
 - (void)lookMe:(void(^)(BOOL flag))completion;
+- (void)doAnimateOnLoadImageFinishIfNeed;
 
 @end

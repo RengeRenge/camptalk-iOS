@@ -26,14 +26,6 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
     return [[self rg_valueForKey:@"rgLoadLargeImageProgress"] floatValue];
 }
 
-- (void)setRgRequestId:(PHImageRequestID)rgRequestId {
-    [self rg_setValue:@(rgRequestId) forKey:@"rgRequestId" retain:YES];
-}
-
-- (PHImageRequestID)rgRequestId {
-    return [[self rg_valueForKey:@"rgRequestId"] intValue];
-}
-
 @end
 
 @interface RGImagePickerCache() <RGImageGalleryDelegate, PHPhotoLibraryChangeObserver>
@@ -45,12 +37,15 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
 
 @property (nonatomic, strong) NSMutableDictionary <NSString *, NSNumber *> *loadStatus;
 
+@property (nonatomic, strong) dispatch_queue_t cacheQueue;
+
 @end
 
 @implementation RGImagePickerCache
 
 - (instancetype)init {
     if (self = [super init]) {
+        self.cacheQueue = dispatch_queue_create("RGImagePickerCacheQueue", DISPATCH_QUEUE_SERIAL);
         self.collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeSmartAlbumUserLibrary options:nil].lastObject;
         PHFetchOptions *option = [[PHFetchOptions alloc] init];
         self.assets = [PHAsset fetchAssetsInAssetCollection:self.collections options:option];
@@ -82,7 +77,9 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
                 
                 if (changed.count) {
                     NSArray <PHAsset *> *phassets = [self.assets objectsAtIndexes:changed];
-                    [self removeThumbCachePhotoForAsset:phassets];
+                    dispatch_sync(self.cacheQueue, ^{
+                        [self __removeThumbCachePhotoForAsset:phassets];
+                    });
                     
                     NSMutableIndexSet *indexSet = [NSMutableIndexSet indexSet];
                     [phassets enumerateObjectsUsingBlock:^(PHAsset * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -105,9 +102,10 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
     return _pickPhotos;
 }
 
-- (NSMutableArray<NSDictionary<NSString *,UIImage *> *> *)cachePhotos {
+- (NSCache *)cachePhotos {
     if (!_cachePhotos) {
-        _cachePhotos = [NSMutableArray array];
+        _cachePhotos = [[NSCache alloc] init];
+        [_cachePhotos setCountLimit:500];
     }
     return _cachePhotos;
 }
@@ -124,60 +122,91 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
 }
 
 - (BOOL)loadStatusCacheForAsset:(PHAsset *)asset {
-    return [self.loadStatus[asset.localIdentifier] boolValue];
+    __block BOOL loadStatus = NO;
+    dispatch_sync(self.cacheQueue, ^{
+        loadStatus = [self.loadStatus[asset.localIdentifier] boolValue];
+    });
+    return loadStatus;
 }
 
-- (void)requestLoadStatusWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result {
-    if ([self loadStatusCacheForAsset:asset]) {
-        if (result) {
-            result(NO);
+- (void)requestLoadStatusWithAsset:(PHAsset *)asset
+                         onlyCache:(BOOL)onlyCache
+                         cacheSync:(BOOL)cacheSync
+                            result:(void(^)(BOOL needLoad))result {
+    void(^handle)(void) = ^{
+        if ([self.loadStatus[asset.localIdentifier] boolValue]) {
+            if (result) {
+                if (cacheSync) {
+                    result(NO);
+                } else {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        result(NO);
+                    });
+                }
+            }
+            return;
         }
-        return;
+        if (onlyCache) {
+            if (cacheSync) {
+                result(YES);
+            } else {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    result(YES);
+                });
+            }
+            return;
+        }
+        [RGImagePicker needLoadWithAsset:asset result:^(BOOL needLoad) {
+            dispatch_async(self.cacheQueue, ^{
+                [self setLoadStatusCache:!needLoad forAsset:asset];
+                if (result) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        result(needLoad);
+                    });
+                }
+            });
+        }];
+    };
+    if (cacheSync) {
+        dispatch_sync(self.cacheQueue, handle);
+    } else {
+        dispatch_async(self.cacheQueue, handle);
     }
-    [RGImagePicker needLoadWithAsset:asset result:^(BOOL needLoad) {
-        [self setLoadStatusCache:!needLoad forAsset:asset];
-        if (result) {
-            result(needLoad);
-        }
-    }];
 }
 
 - (void)addThumbCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset {
     if (!photo) {
         return;
     }
-    NSUInteger index = [self indexForCacheAsset:asset];
-    if (index != NSNotFound) {
-        UIImage *image = self.cachePhotos[index].allValues.firstObject;
+    dispatch_async(self.cacheQueue, ^{
+        [self __addThumbCachePhoto:photo forAsset:asset];
+    });
+}
+
+- (void)__addThumbCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset {
+    if (!photo) {
+        return;
+    }
+    UIImage *image = [self.cachePhotos objectForKey:asset.localIdentifier];
+    if (image) {
         if (photo.size.width > image.size.width || photo.size.height > image.size.height) {
-            self.cachePhotos[index] = @{asset.localIdentifier: photo};
+            [self.cachePhotos setObject:photo forKey:asset.localIdentifier];
         }
         return;
     }
-    if (self.cachePhotos.count > 100) {
-        [self.cachePhotos removeObjectAtIndex:0];
-    }
-    [self.cachePhotos addObject:@{asset.localIdentifier: photo}];
+    [self.cachePhotos setObject:photo forKey:asset.localIdentifier];
 }
 
 - (void)removeThumbCachePhotoForAsset:(NSArray <PHAsset *> *)assets {
-    [assets enumerateObjectsUsingBlock:^(PHAsset * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        NSInteger index = [self indexForCacheAsset:obj];
-        if (index == NSNotFound) {
-            return;
-        }
-        [self.cachePhotos removeObjectAtIndex:index];
-    }];
+    dispatch_async(self.cacheQueue, ^{
+        [self __removeThumbCachePhotoForAsset:assets];
+    });
 }
 
-- (NSUInteger)indexForCacheAsset:(PHAsset *)asset {
-    for (NSInteger i = 0; i < self.cachePhotos.count; i++) {
-        NSDictionary<NSString *,UIImage *> *obj = self.cachePhotos[i];
-        if ([obj.allKeys.firstObject isEqualToString:asset.localIdentifier]) {
-            return i;
-        }
-    }
-    return NSNotFound;
+- (void)__removeThumbCachePhotoForAsset:(NSArray <PHAsset *> *)assets {
+    [assets enumerateObjectsUsingBlock:^(PHAsset * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        [self.cachePhotos removeObjectForKey:obj.localIdentifier];
+    }];
 }
 
 - (UIImage *)imageForAsset:(PHAsset *)asset
@@ -185,47 +214,74 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
                   syncLoad:(BOOL)syncLoad
                   allowNet:(BOOL)allowNet
                 targetSize:(CGSize)targetSize
-                completion:(void(^)(UIImage *image))completion {
+                completion:(void(^_Nullable)(UIImage *image))completion {
+    if (syncLoad) {
+        __block UIImage *image = nil;
+        dispatch_sync(self.cacheQueue, ^{
+            image = [self __cacheImageForAsset:asset];
+        });
+        if (image || onlyCache) {
+            if (completion) {
+                completion(image);
+            }
+            return image;
+        }
+        return [self __loadImageForAsset:asset syncLoad:syncLoad allowNet:allowNet targetSize:targetSize completion:completion];
+    } else {
+        dispatch_async(self.cacheQueue, ^{
+            __block UIImage *image = [self __cacheImageForAsset:asset];
+            if (image || onlyCache) {
+                if (completion) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        completion(image);
+                    });
+                }
+                return;
+            }
+            [self __loadImageForAsset:asset syncLoad:syncLoad allowNet:allowNet targetSize:targetSize completion:completion];
+        });
+        return nil;
+    }
+}
+
+- (UIImage *)__cacheImageForAsset:(PHAsset *)asset {
+    UIImage *image = [self.cachePhotos objectForKey:asset.localIdentifier];
+    return image;
+}
+
+- (UIImage *)__loadImageForAsset:(PHAsset *)asset
+                        syncLoad:(BOOL)syncLoad
+                        allowNet:(BOOL)allowNet
+                      targetSize:(CGSize)targetSize
+                      completion:(void(^)(UIImage *image))completion {
     
     __block UIImage *image = nil;
     
-    NSUInteger index = [self indexForCacheAsset:asset];
-    if (index != NSNotFound) {
-        image = self.cachePhotos[index].allValues.firstObject;
-        if (completion) {
-            completion(image);
-        }
-        return image;
-    }
-    
-    if (onlyCache) {
-        return image;
-    }
-    
-    if (asset.rgRequestId) {
-//        NSLog(@"PH Load And Cancel Id:[%d]", asset.rgRequestId);
-        [[PHCachingImageManager defaultManager] cancelImageRequest:asset.rgRequestId];
-        asset.rgRequestId = 0;
-    }
-    
-    PHImageRequestOptions *op = [[PHImageRequestOptions alloc] init];
-    op.resizeMode = PHImageRequestOptionsResizeModeFast;
-    op.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
-    op.synchronous = syncLoad;
-    op.networkAccessAllowed = allowNet;
-    
-    [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:targetSize contentMode:PHImageContentModeAspectFill options:op resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
-        
-        asset.rgRequestId = 0;
+    [RGImagePicker imageForAsset:asset syncLoad:syncLoad allowNet:allowNet targetSize:targetSize resizeMode:PHImageRequestOptionsResizeModeFast needImage:YES completion:^(id _Nonnull result) {
         
         image = result;
-        [self addThumbCachePhoto:result forAsset:asset];
-        if (completion) {
-            completion(image);
+        
+        if (syncLoad) {
+            dispatch_sync(self.cacheQueue, ^{
+                [self __addThumbCachePhoto:result forAsset:asset];
+            });
+            if (completion) {
+                completion(image);
+            }
+        } else {
+            dispatch_async(self.cacheQueue, ^{
+                [self __addThumbCachePhoto:result forAsset:asset];
+                if (completion) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        completion(image);
+                    });
+                }
+            });
         }
     }];
     return image;
 }
+
 
 - (void)setPhotos:(NSArray<PHAsset *> *)phassets {
     NSIndexSet *delete = nil;
@@ -318,7 +374,7 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
 
 #pragma mark - RGImageGalleryDelegate
 
-- (nonnull UIView *)imageGallery:(nonnull RGImageGallery *)imageGallery thumbViewForPushAtIndex:(NSInteger)index {
+- (nonnull UIView *)imageGallery:(nonnull RGImageGallery *)imageGallery thumbViewForTransitionAtIndex:(NSInteger)index {
     return nil;
 }
 

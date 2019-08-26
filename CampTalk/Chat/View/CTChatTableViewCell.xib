@@ -27,15 +27,9 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                     </view>
-                    <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="mKW-vX-PVz" userLabel="Image Wapper" customClass="RGBubbleView">
+                    <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="mKW-vX-PVz" userLabel="Image Wapper" customClass="CTBubbleImageView">
                         <rect key="frame" x="85" y="0.0" width="200" height="200"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                        <subviews>
-                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="TKH-Bh-Srq">
-                                <rect key="frame" x="0.0" y="0.0" width="200" height="200"/>
-                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                            </imageView>
-                        </subviews>
                         <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                     </view>
                 </subviews>
@@ -44,7 +38,6 @@
             <connections>
                 <outlet property="chatBubbleLabel" destination="Y0E-eA-lJC" id="fYY-c9-tFX"/>
                 <outlet property="iconView" destination="2sL-md-YyA" id="Les-7e-GKi"/>
-                <outlet property="thumbView" destination="TKH-Bh-Srq" id="Yng-Bn-cMl"/>
                 <outlet property="thumbWapper" destination="mKW-vX-PVz" id="IkV-we-uEP"/>
             </connections>
             <point key="canvasLocation" x="-5" y="105"/>

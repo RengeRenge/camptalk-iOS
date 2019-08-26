@@ -20,4 +20,9 @@
 
 - (UIEdgeInsets)contentViewEdge;
 
+- (CGRect)setBounds:(CGRect)bounds withCertainConentSize:(CGSize)conentSize;
+- (CGRect)setBoundsWithCertainConentSize:(CGSize)conentSize;
+
++ (UIEdgeInsets)contentViewEdgeWithRightToLeft:(BOOL)rightToLeft;
+
 @end

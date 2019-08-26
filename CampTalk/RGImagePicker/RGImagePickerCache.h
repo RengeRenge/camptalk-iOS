@@ -23,8 +23,6 @@ extern NSNotificationName RGImagePickerCachePickPhotosHasChanged;
 
 //@property (nonatomic, assign) BOOL rgIsLoaded;
 
-@property (nonatomic, assign) PHImageRequestID rgRequestId;
-
 @end
 
 @interface RGImagePickerCache : NSObject
@@ -33,7 +31,7 @@ extern NSNotificationName RGImagePickerCachePickPhotosHasChanged;
 
 @property (nonatomic, assign) NSUInteger maxCount;
 
-@property (nonatomic, strong) NSMutableArray <NSDictionary <NSString *, UIImage *> *> *cachePhotos;
+@property (nonatomic, strong) NSCache *cachePhotos;
 
 @property (nonatomic, copy) RGImagePickResult pickResult;
 
@@ -41,7 +39,6 @@ extern NSNotificationName RGImagePickerCachePickPhotosHasChanged;
 - (void)addThumbCachePhoto:(UIImage *)photo forAsset:(PHAsset *)asset;
 - (void)removeThumbCachePhotoForAsset:(NSArray <PHAsset *> *)assets;
 
-// large image
 - (UIImage *_Nullable)imageForAsset:(PHAsset *)asset
                           onlyCache:(BOOL)onlyCache
                            syncLoad:(BOOL)syncLoad
@@ -52,7 +49,7 @@ extern NSNotificationName RGImagePickerCachePickPhotosHasChanged;
 // load status
 - (void)setLoadStatusCache:(BOOL)loaded forAsset:(PHAsset *)asset;
 - (BOOL)loadStatusCacheForAsset:(PHAsset *)asset;
-- (void)requestLoadStatusWithAsset:(PHAsset *)asset result:(void(^)(BOOL needLoad))result;
+- (void)requestLoadStatusWithAsset:(PHAsset *)asset onlyCache:(BOOL)onlyCache cacheSync:(BOOL)cacheSync result:(void(^)(BOOL needLoad))result;
 
 // pick photo
 - (void)setPhotos:(NSArray <PHAsset *> *)phassets;

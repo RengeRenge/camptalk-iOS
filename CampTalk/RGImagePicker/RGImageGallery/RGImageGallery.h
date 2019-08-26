@@ -57,7 +57,7 @@ typedef enum : NSUInteger {
 @protocol RGImageGalleryDelegate <NSObject>
 
 - (NSInteger)numOfImagesForImageGallery:(RGImageGallery *)imageGallery;
-- (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForPushAtIndex:(NSInteger)index;
+- (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForTransitionAtIndex:(NSInteger)index;
 
 - (UIImage *)imageGallery:(RGImageGallery *)imageGallery thumbnailAtIndex:(NSInteger)index targetSize:(CGSize)targetSize;
 - (UIImage *)imageGallery:(RGImageGallery *)imageGallery imageAtIndex:(NSInteger)index targetSize:(CGSize)targetSize updateImage:(void(^_Nullable)(UIImage *image))updateImage;

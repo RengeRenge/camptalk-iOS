@@ -25,8 +25,9 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 @interface CTChatTableViewCell () <CAAnimationDelegate>
 
 @property (weak, nonatomic) IBOutlet UIImageView *iconView;
-@property (weak, nonatomic) IBOutlet RGBubbleView *thumbWapper;
 @property (nonatomic, strong) JYWaveView *waveView;
+
+@property (nonatomic, copy) void(^lookMeBlock)(BOOL);
 
 @end
 
@@ -52,6 +53,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 - (JYWaveView *)waveView {
     if (!_waveView) {
         _waveView = [[JYWaveView alloc] initWithFrame:self.thumbWapper.bounds];
+        _waveView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
         _waveView.frontColor = [[UIColor whiteColor] colorWithAlphaComponent:0.7];
         _waveView.insideColor = [[UIColor whiteColor] colorWithAlphaComponent:0.3];
         _waveView.frontSpeed = 0.05;
@@ -65,11 +67,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 }
 
 - (void)setIconImage:(UIImage *)iconImage {
-    if (_myDirection) {
-        _iconImage = [iconImage rg_imageFlippedForRightToLeftLayoutDirection];
-    } else {
-        _iconImage = iconImage;
-    }
+    _iconImage = iconImage;
     self.iconView.image = _iconImage;
 }
 
@@ -77,29 +75,54 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     loadThumbProresss = MIN(loadThumbProresss, 1);
     _loadThumbProresss = loadThumbProresss;
     if (self.isLookMe) {
+        self.thumbWapper.backgroundView.backgroundColor = [UIColor clearColor];
         return;
     }
-    if (self.displayThumb) {
+    if (self.displayThumb && !self.displayLocalThumb) {
         if (_loadThumbProresss >= 1) {
-            [UIView animateWithDuration:1.f animations:^{
-                self.waveView.alpha = 0;
-                self.thumbView.alpha = 1;
-            } completion:^(BOOL finished) {
-                if (loadThumbProresss == self->_loadThumbProresss) {
-                    [self.waveView stop];
-                }
-            }];
             return;
         }
         self.waveView.alpha = 1;
-        self.thumbView.alpha = 0;
-        self.waveView.waveBottomWillToHeight = self.thumbView.bounds.size.height*loadThumbProresss;
+        self.thumbWapper.imageView.alpha = 0;
+        self.waveView.waveBottomWillToHeight = self.thumbWapper.imageView.bounds.size.height*loadThumbProresss;
         [self.waveView strat];
-    } else {
-        self.waveView.waveBottomWillToHeight = 0;
-        self.waveView.waveBottomCurrentHeight = 0;
-        [self.waveView stop];
+        self.thumbWapper.backgroundView.backgroundColor = [UIColor clearColor];
     }
+}
+
+- (void)doAnimateOnLoadImageFinishIfNeed {
+    if (!_displayThumb || _displayLocalThumb) {
+        return;
+    }
+    CGFloat loadThumbProresss = self.loadThumbProresss;
+    [UIView animateWithDuration:1.f animations:^{
+        self.waveView.alpha = 0;
+        self.thumbWapper.imageView.alpha = 1;
+        self.thumbWapper.backgroundView.backgroundColor = [UIColor whiteColor];
+    } completion:^(BOOL finished) {
+        if (loadThumbProresss == self->_loadThumbProresss) {
+            [self.waveView stop];
+        }
+    }];
+}
+
+- (void)setDisplayThumb:(BOOL)displayThumb {
+    if (_displayThumb == displayThumb) {
+        return;
+    }
+    _displayThumb = displayThumb;
+    [self setNeedsLayout];
+}
+
+- (void)setDisplayLocalThumb:(BOOL)displayLocalThumb {
+    if (_displayLocalThumb == displayLocalThumb) {
+        return;
+    }
+    _displayLocalThumb = displayLocalThumb;
+    if (displayLocalThumb) {
+        self.thumbWapper.backgroundView.backgroundColor = [UIColor whiteColor];
+    }
+    [self setNeedsLayout];
 }
 
 - (void)setMyDirection:(BOOL)myDirection {
@@ -109,11 +132,24 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     _myDirection = myDirection;
     self.chatBubbleLabel.bubbleRightToLeft = myDirection;
     self.thumbWapper.bubbleRightToLeft = myDirection;
+    [UIView performWithoutAnimation:^{
+        if (myDirection) {
+            self.iconView.transform = CGAffineTransformMakeScale(-1, 1);
+        } else {
+            self.iconView.transform  = CGAffineTransformMakeScale(1, 1);
+        }
+    }];
     [self.contentView setNeedsLayout];
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    
+    if (!_displayThumb || _displayLocalThumb) {
+        self.waveView.waveBottomWillToHeight = 0;
+        self.waveView.waveBottomCurrentHeight = 0;
+        [self.waveView stop];
+    }
     
     CGRect bounds = self.contentView.bounds;
     CGFloat height = bounds.size.height;
@@ -130,51 +166,27 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
                iconSize.height
                );
     
-    bounds = UIEdgeInsetsInsetRect(bounds, UIEdgeInsetsMake(0, _chatCelIIconWidth + _margin + _marginBubble, 0, _margin));
+    CGRect contentBounds = UIEdgeInsetsInsetRect(bounds, UIEdgeInsetsMake(0, _chatCelIIconWidth + _margin + _marginBubble, 0, _chatCelIIconWidth + _margin));
     
     if (self.displayThumb) {
         //图片布局
         CGSize thumbLogicSize = [UIImage rg_logicSizeWithPixSize:self.thumbPixSize];
-        bounds.size = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(bounds.size.width, height - _marginTop) imageSize:thumbLogicSize];
         
-        UIEdgeInsets bubbleEdge = self.thumbWapper.contentViewEdge;
-        if (self.thumbWapper.bubbleRightToLeft) {
-            CGFloat left = bubbleEdge.left;
-            bubbleEdge.left = bubbleEdge.right;
-            bubbleEdge.right = left;
-        }
+        CGSize size = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(contentBounds.size.width, height - [self.class imageSizeHeightExt]) imageSize:thumbLogicSize];
         
-        if (bubbleEdge.left * 8 <= thumbLogicSize.width) {
-            [self.thumbWapper.backgroundView addSubview:self.thumbView];
-            self.thumbWapper.backgroundView.backgroundColor = [UIColor clearColor];
-            
-            bounds.origin.y = self.bounds.size.height - bounds.size.height;
-            
-            self.thumbWapper.frame = bounds;
-            self.thumbView.frame = self.thumbWapper.backgroundView.bounds;
-        } else {
-            [self.thumbWapper.contentView addSubview:self.thumbView];
-            self.thumbWapper.backgroundView.backgroundColor = [UIColor whiteColor];
-
-            bounds.size.width += (bubbleEdge.left + bubbleEdge.right);
-            bounds.size.height += (bubbleEdge.top + bubbleEdge.bottom);
-            bounds.origin.y = self.bounds.size.height - bounds.size.height;
-            
-            self.thumbWapper.frame = bounds;
-            self.thumbView.frame = self.thumbWapper.contentView.bounds;
-
-        }
-        self.waveView.frame = self.thumbWapper.bounds;
+        size = [self.thumbWapper setBoundsWithImageSize:size].size;
+        size.width = MIN(size.width, contentBounds.size.width);
+        contentBounds.size = size;
+        contentBounds.origin.y = bounds.size.height - contentBounds.size.height;
+        self.thumbWapper.frame = contentBounds;
+        self.waveView.waveBottomWillToHeight = self.thumbWapper.bounds.size.height*self.loadThumbProresss;
         
         self.chatBubbleLabel.hidden = YES;
         self.thumbWapper.hidden = NO;
-        
-        self.waveView.waveBottomWillToHeight = self.thumbView.bounds.size.height*self.loadThumbProresss;
-        
     } else {
         
         //文字布局
-        CGSize labelSize = [self.chatBubbleLabel sizeThatFits:bounds.size];
+        CGSize labelSize = [self.chatBubbleLabel sizeThatFits:contentBounds.size];
 //        if (bounds.size.height - _maxIconSize.height - _marginTop < 1e-7) {
 //            labelSize = [self.chatBubbleLabel sizeThatFits:bounds.size];
 //        } else {
@@ -182,9 +194,9 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 //            labelSize.height -= _marginTop;
 //        }
         
-        bounds.origin.y = bounds.size.height - labelSize.height;
-        bounds.size = labelSize;
-        self.chatBubbleLabel.frame = bounds;
+        contentBounds.origin.y = contentBounds.size.height - labelSize.height;
+        contentBounds.size = labelSize;
+        self.chatBubbleLabel.frame = contentBounds;
         
         self.chatBubbleLabel.hidden = NO;
         self.thumbWapper.hidden = YES;
@@ -220,6 +232,11 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
             imageSize.width *= scale;
         }
     }
+    if (imageSize.height != 0 && imageSize.height < 40) {
+        scale = 40 / imageSize.height;
+        imageSize.height *= scale;
+        imageSize.width *= scale;
+    }
     return imageSize;
 }
 
@@ -248,7 +265,13 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     
     fits.height = [self imageSizeThatFits:fits imageSize:thumbSize].height;
     fits.height = MAX(fits.height, _maxIconSize.height);
-    return fits.height + _marginTop ;
+    
+    return fits.height + [self imageSizeHeightExt];
+}
+
++ (CGFloat)imageSizeHeightExt {
+    UIEdgeInsets bubbleInset = [CTBubbleImageView contentViewEdgeWithRightToLeft:NO];
+    return _marginTop + bubbleInset.bottom + bubbleInset.top;
 }
 
 - (BOOL)isLookMe {
@@ -264,10 +287,13 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 - (void)lookMe:(void (^)(BOOL))completion {
     // Configure the view for the selected state
     if (self.isLookMe) {
-        if (completion) {
-            completion(NO);
+        void(^lookMeBlock)(BOOL) = self.lookMeBlock;
+        self.lookMeBlock = nil;
+        [self.thumbWapper.layer removeAllAnimations];
+        [self.chatBubbleLabel.layer removeAllAnimations];
+        if (lookMeBlock) {
+            lookMeBlock(NO);
         }
-        return;
     }
     [self.waveView stop];
     
@@ -302,12 +328,11 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
         animateView.layer.position = position;
     }
     [animateView.layer addAnimation:transformAnimation forKey:@"transformAnimation"];
-    if (completion) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            completion(YES);
-            self.loadThumbProresss = self.loadThumbProresss;
-        });
-    }
+    __weak typeof(self) wSelf = self;
+    self.lookMeBlock = ^(BOOL flag) {
+        completion(flag);
+        wSelf.loadThumbProresss = wSelf.loadThumbProresss;
+    };
 }
 
 - (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
@@ -316,6 +341,11 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     }
     [self.thumbWapper.layer removeAllAnimations];
     [self.chatBubbleLabel.layer removeAllAnimations];
+    if (self.lookMeBlock) {
+        void(^lookMeBlock)(BOOL) = self.lookMeBlock;
+        self.lookMeBlock = nil;
+        lookMeBlock(NO);
+    }
 }
 
 - (BOOL)canBecomeFirstResponder {
@@ -344,7 +374,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 - (void)copy:(id)sender {
     UIPasteboard *pboard = [UIPasteboard generalPasteboard];
     if (self.displayThumb) {
-        pboard.image = self.thumbView.image;
+        pboard.image = self.thumbWapper.image;
     } else {
         pboard.string = self.chatBubbleLabel.label.text;
     }

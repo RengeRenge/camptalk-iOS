@@ -495,6 +495,81 @@ enum{
     }
 }
 
+- (void)setMiddleImageViewWhenPushAnimate {
+    if ([self getCountWithSetContentSize:NO] != 0) {
+        UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
+        UIButton *play = [imageView viewWithTag:ButtonTag];
+        
+        CGRect oFrame = imageView.frame;
+        CGRect pushFrame = [self getImageViewFrameWithImage:imageView.image];
+        
+        CGFloat pWidth = CGRectGetWidth(pushFrame);
+        CGFloat pHeight = CGRectGetHeight(pushFrame);
+        
+        CGFloat pct = 0.03;
+        CGFloat offSetX = pWidth * pct;
+        CGFloat offSetY = pHeight * pct;
+        CGFloat minOffSet = 8;
+        CGFloat maxOffSet = MIN(pWidth*0.1, pHeight*0.1);
+        if (minOffSet < maxOffSet) {
+            if (offSetX < minOffSet) {
+                offSetX = minOffSet;
+                pct = offSetX/pWidth;
+                offSetY = pct*pHeight;
+            }
+            if (offSetY < minOffSet) {
+                offSetY = minOffSet;
+                pct = offSetY/pHeight;
+                offSetX = pct*pWidth;
+            }
+        }
+        
+        __block BOOL L,R,U,D = NO;
+        __block CGRect largePushFrame =
+        CGRectInset(pushFrame, -pWidth*pct, -pHeight*pct);;
+        
+        void(^calOffSet)(CGPoint pP, CGPoint oP) = ^(CGPoint pP, CGPoint oP) {
+            if (!L && pP.x < oP.x) { // 向左
+                L = YES;
+                largePushFrame.origin.x -= offSetX;
+            }
+            if (!R && pP.x > oP.x) { // 向右
+                R = YES;
+                largePushFrame.origin.x += offSetX;
+            }
+            if (!U && pP.y < oP.y) { // 向上
+                U = YES;
+                largePushFrame.origin.y -= offSetY;
+            }
+            if (!D && pP.y > oP.y) { // 向下
+                D = YES;
+                largePushFrame.origin.y += offSetY;
+            }
+        };
+        
+        calOffSet(pushFrame.origin, oFrame.origin);
+        calOffSet(
+                  CGPointMake(CGRectGetMaxX(pushFrame), CGRectGetMaxY(pushFrame)),
+                  CGPointMake(CGRectGetMaxX(oFrame), CGRectGetMaxY(oFrame))
+                  );
+        calOffSet(
+                  CGPointMake(CGRectGetMaxX(pushFrame), CGRectGetMinY(pushFrame)),
+                  CGPointMake(CGRectGetMaxX(oFrame), CGRectGetMinY(oFrame))
+                  );
+        calOffSet(
+                  CGPointMake(CGRectGetMinX(pushFrame), CGRectGetMaxY(pushFrame)),
+                  CGPointMake(CGRectGetMinX(oFrame), CGRectGetMaxY(oFrame))
+                  );
+        imageView.frame = largePushFrame;
+        
+        if (play.enabled) {
+            play.center = CGPointMake(imageView.frame.size.width/2, imageView.frame.size.height/2);
+            play.alpha = 1.0f;
+        }
+        play.transform = CGAffineTransformMakeScale(1, 1);
+    }
+}
+
 - (void)setMiddleImageViewPlayButton {
     UIImageView *imageView = self.imageViewArr[RGIGViewIndexM];
     UIButton *play = [imageView viewWithTag:ButtonTag];
@@ -603,8 +678,8 @@ enum{
 
 - (CGRect)getPushViewFrame {
     CGRect rect = CGRectZero;
-    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:thumbViewForPushAtIndex:)]) {
-        UIView *view = [_delegate imageGallery:self thumbViewForPushAtIndex:_page];
+    if (_delegate && [_delegate respondsToSelector:@selector(imageGallery:thumbViewForTransitionAtIndex:)]) {
+        UIView *view = [_delegate imageGallery:self thumbViewForTransitionAtIndex:_page];
         //return view.frame;
         //getRect
         rect = [view convertRect:view.bounds toView:[self.viewControllerF view]];
@@ -1092,6 +1167,12 @@ enum{
             self.navigationController.delegate = nil;
             [self.navigationController popViewControllerAnimated:YES];
             [self __setNavigationBarAndTabBarForImageGallery:NO];
+            UINavigationController *ngv = self.navigationController;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                if (ngv.navigationBarHidden) {
+                    [ngv setNavigationBarHidden:NO animated:NO];
+                }
+            });
         }];
     } else if (hasDataAfterCurrentPage) { // 后面还有数据，把后面的数据挪到前面
         
@@ -1199,8 +1280,9 @@ enum{
 
 #pragma mark - Push And Pop Animate
 
-#define animateTtransitionDuration 0.5f
-#define interationTtransitionDuration 0.5f
+#define animateTtransitionDuration 2.35f
+#define animatePopTtransitionDuration 0.2f
+#define interationTtransitionDuration 0.2f
 
 #define DampingRatio    0.7     //弹性的阻尼值
 #define Velocity        0.01    //弹簧的修正速度
@@ -1433,7 +1515,8 @@ enum{
             }
             break;
         }
-        case UIGestureRecognizerStateEnded: case UIGestureRecognizerStateCancelled: {
+        case UIGestureRecognizerStateEnded:
+        case UIGestureRecognizerStateCancelled: {
             if (!self.transitionDelegate.interactive) {
                 return;
             }
@@ -1566,7 +1649,13 @@ enum{
 #pragma mark - UIViewControllerAnimatedTransitioning
 
 - (NSTimeInterval)transitionDuration:(id<UIViewControllerContextTransitioning>)transitionContext {
-    return self.transitionDelegate.interactive ? interationTtransitionDuration : animateTtransitionDuration;
+    if (self.transitionDelegate.interactive) {
+        return interationTtransitionDuration;
+    }
+    if (self.operation == UINavigationControllerOperationPop) {
+        return animatePopTtransitionDuration;
+    }
+    return 0.4;
 }
 
 - (void)animateTransition:(id<UIViewControllerContextTransitioning>)transitionContext {
@@ -1585,15 +1674,7 @@ enum{
                 com = [toVC.delegate imageGallery:toVC willBePushedWithParentViewController:fromVC];
             }
             
-            [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
-            [UIView animateKeyframesWithDuration:duration delay:0.0 options:UIViewKeyframeAnimationOptionCalculationModeLinear animations:^{
-                if (!self.transitionDelegate.interactive) {
-                    [self addKeyFrameAnimationOnCellPushToVC:toVC duration:duration];
-                }
-                [self addkeyFrameAnimationForBarFrom:toVC isPush:YES duration:duration];
-                [self addkeyFrameAnimationForBackgroundColorInPushToVC:toVC duration:duration];
-            } completion:^(BOOL finished) {
-                
+            void(^completion)(BOOL finished) = ^(BOOL finished) {
                 BOOL operateSucceed = self.transitionDelegate.operateSucceed;
                 
                 if (com) {
@@ -1620,14 +1701,37 @@ enum{
                         operateBlock(operateSucceed);
                     });
                 }
-            }];
+            };
+            
+            [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
+            if (!self.transitionDelegate.interactive) {
+                [UIView animateWithDuration:duration*0.6 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+                    [toVC setMiddleImageViewWhenPushAnimate];
+                    [self addAnimationForBackgroundColorInPushToVC:toVC];
+                } completion:^(BOOL finished) {
+                    
+                }];
+                [UIView animateWithDuration:duration*0.4 delay:duration*0.6 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+                    [toVC setMiddleImageViewWhenPushFinished];
+                } completion:completion];
+                [UIView animateWithDuration:duration animations:^{
+                    [self addAnimationForBarFrom:toVC isPush:YES];
+                } completion:nil];
+            } else {
+                [UIView animateKeyframesWithDuration:duration delay:0.0 options:UIViewKeyframeAnimationOptionCalculationModeCubic animations:^{
+                    [self addKeyFrameAnimationOnCellPushToVC:toVC];
+                    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:1 animations:^{
+                        [self addAnimationForBarFrom:toVC isPush:YES ];
+                        [self addAnimationForBackgroundColorInPushToVC:toVC];
+                    }];
+                } completion:completion];
+            }
             break;
         }
         case UINavigationControllerOperationPop:{
             UIView *containerView       = [transitionContext containerView];
             RGImageGallery *fromVC        = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
             UIViewController *toVC      = [transitionContext viewControllerForKey:UITransitionContextToViewControllerKey];
-            toVC.view.frame = [UIScreen mainScreen].bounds;
             
             UIView *fromView            = SYSTEM_LESS_THAN(@"8")?fromVC.view:[transitionContext viewForKey:UITransitionContextFromViewKey];
             UIView *toView              = SYSTEM_LESS_THAN(@"8")?toVC.view:[transitionContext viewForKey:UITransitionContextToViewKey];
@@ -1641,7 +1745,7 @@ enum{
                 com = [fromVC.delegate imageGallery:fromVC willPopToParentViewController:toVC];
             }
             
-            [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
+//            [UIView setAnimationCurve:UIViewAnimationCurveEaseOut];
             [UIView animateKeyframesWithDuration:duration delay:0.0 options:UIViewKeyframeAnimationOptionCalculationModeLinear animations:^{
                 
                 if (toVC.navigationController.navigationBarHidden) {
@@ -1649,10 +1753,12 @@ enum{
                 }
                 
                 if (!self.transitionDelegate.interactive) {
-                    [self addKeyFrameAnimationOnCellPopFromVC:fromVC duration:duration];
+                    [self addKeyFrameAnimationOnCellPopFromVC:fromVC];
                 }
-                [self addkeyFrameAnimationForBarFrom:fromVC isPush:NO duration:duration];
-                [self addkeyFrameAnimationForBackgroundColorInPopWithFakeBackground:fromView duration:duration];
+                [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:1 animations:^{
+                    [self addAnimationForBarFrom:fromVC isPush:NO];
+                    [self addAnimationForBackgroundColorInPopWithFakeBackground:fromView];
+                }];
             } completion:^(BOOL finished) {
                 [fromVC __setNavigationBarAndTabBarForImageGallery:!self.transitionDelegate.operateSucceed];
                 if (self.transitionDelegate.operateSucceed) {
@@ -1677,41 +1783,36 @@ enum{
     }
 }
 
-- (void)addKeyFrameAnimationOnCellPushToVC:(RGImageGallery *)toVC duration:(NSTimeInterval)duration {
-    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
-        [UIView animateWithDuration:duration delay:0 usingSpringWithDamping:DampingRatio initialSpringVelocity:Velocity options:UIViewAnimationOptionCurveEaseInOut animations:^{
-            [toVC setMiddleImageViewWhenPushFinished];
-        } completion:nil];
+- (void)addKeyFrameAnimationOnCellPushToVC:(RGImageGallery *)toVC {
+    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:0.7 animations:^{
+        [toVC setMiddleImageViewWhenPushAnimate];
+    }];
+    [UIView addKeyframeWithRelativeStartTime:0.7 relativeDuration:0.3 animations:^{
+        [toVC setMiddleImageViewWhenPushFinished];
     }];
 }
 
-- (void)addKeyFrameAnimationOnCellPopFromVC:(RGImageGallery *)fromVC duration:(NSTimeInterval)duration {
-    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
+- (void)addKeyFrameAnimationOnCellPopFromVC:(RGImageGallery *)fromVC {
+    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:1 animations:^{
         [fromVC setMiddleImageViewWhenPopFinished];
     }];
 }
 
-- (void)addkeyFrameAnimationForBackgroundColorInPushToVC:(RGImageGallery *)toVC duration:(NSTimeInterval)duration {
-    [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
-    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
-        [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:1]];
-    }];
+- (void)addAnimationForBackgroundColorInPushToVC:(RGImageGallery *)toVC {
+    [toVC.view setBackgroundColor:[UIColor colorWithWhite:1 alpha:1]];
 }
 
-- (void)addkeyFrameAnimationForBackgroundColorInPopWithFakeBackground:(UIView *)toView duration:(NSTimeInterval)duration {
-    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
-        [toView setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
-    }];
+- (void)addAnimationForBackgroundColorInPopWithFakeBackground:(UIView *)toView {
+    [toView setBackgroundColor:[UIColor colorWithWhite:1 alpha:0]];
 }
 
-- (void)addkeyFrameAnimationForBarFrom:(RGImageGallery *)imageGallery isPush:(BOOL)isPush duration:(NSTimeInterval)duration {
-    [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:duration animations:^{
-        if (isPush) {
-            [imageGallery hide:NO toolbarWithAnimateDuration:0];
-        } else {
-            [imageGallery hide:YES toolbarWithAnimateDuration:0];
-        }
-    }];
+- (void)addAnimationForBarFrom:(RGImageGallery *)imageGallery isPush:(BOOL)isPush {
+    if (isPush) {
+        [imageGallery hide:NO toolbarWithAnimateDuration:0];
+    } else {
+        [imageGallery hide:YES toolbarWithAnimateDuration:0];
+    }
 }
+
 @end
 

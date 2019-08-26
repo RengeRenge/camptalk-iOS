@@ -54,6 +54,10 @@
 + (RLMResults<RGMessage *> *)unreadMessageWithRoomId:(NSString *)roomId username:(NSString *)username;
 + (NSMutableArray <RGMessage *> *)fakeList;
 
+- (BOOL)hasImage;
+- (BOOL)isNetImage;
+- (NSURL *)imageUrlForThumb:(BOOL)thumb;
+
 @end
 RLM_ARRAY_TYPE(RGMessage)
 

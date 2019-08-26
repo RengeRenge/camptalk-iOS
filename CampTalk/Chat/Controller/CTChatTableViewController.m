@@ -28,6 +28,10 @@
 #import "RGRealmManager.h"
 #import "RGMessageViewModel.h"
 #import "CTChatIconConfig.h"
+#import <AFNetworking/AFNetworking.h>
+
+#import "XJWebViewController.h"
+#import "CTImageClassifyTableViewController.h"
 
 static CGFloat kMinInputViewHeight = 60.f;
 
@@ -98,7 +102,7 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     _mInputView = [[CTChatInputView alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height - kMinInputViewHeight, self.view.bounds.size.width, kMinInputViewHeight)];
     _mInputView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
-    [_mInputView.actionButton setImage:[[UIImage rg_imageWithName:@"fuzi_hd"] rg_imageFlippedForRightToLeftLayoutDirection] forState:UIControlStateNormal];
+    [_mInputView.actionButton setImage:[UIImage rg_imageWithName:@"fuzi_hd"] forState:UIControlStateNormal];
     _mInputView.delegate = self;
     [self.view addSubview:_mInputView];
     [self __configInputViewLayout];
@@ -124,7 +128,7 @@ static CGFloat kMinInputViewHeight = 60.f;
             _needScrollToBottom = NO;
             return;
         }
-        
+        self.tableView.alpha = 0;
         [self.tableView setNeedsLayout];
         [self.tableView layoutIfNeeded];
         [self.tableView rg_scrollViewToBottom:NO];
@@ -134,17 +138,14 @@ static CGFloat kMinInputViewHeight = 60.f;
             
             NSArray<__kindof UITableViewCell *> *visibleCells = self.tableView.visibleCells;
             NSArray<NSIndexPath *> *indexPathsForVisibleRows = self.tableView.indexPathsForVisibleRows;
+            [visibleCells enumerateObjectsUsingBlock:^(__kindof UITableViewCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                RGMessage *msg = self.messages[indexPathsForVisibleRows[idx].row];
+                [self _configCell:obj withMessage:msg];
+                [obj setNeedsLayout];
+            }];
             
-            if (!visibleCells.count) {
-                [self.tableView reloadData];
-                return;
-            }
             [UIView animateWithDuration:0.5 animations:^{
-                [visibleCells enumerateObjectsUsingBlock:^(__kindof UITableViewCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                    RGMessage *msg = self.messages[indexPathsForVisibleRows[idx].row];
-                    [self _configCell:obj withMessage:msg];
-                    [obj setNeedsLayout];
-                }];
+                self.tableView.alpha = 1;
             }];
         });
     }
@@ -155,6 +156,9 @@ static CGFloat kMinInputViewHeight = 60.f;
     CGFloat recordTBHeight = self.tableView.frame.size.height;
     
     self.tableView.frame = self.view.bounds;
+    UIEdgeInsets edge = UIEdgeInsetsMake(0, 0, self.tableView.contentInset.bottom, 0);
+    [self rg_setFullFrameScrollView:self.tableView wtihAdditionalContentInset:edge];
+    
     _cameraView.frame = self.rg_safeAreaBounds;
     
     [self __configStubbornViewLayout];
@@ -297,7 +301,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 - (void)__changeBg:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateBegan) {
         [RGImagePicker presentByViewController:self pickResult:^(NSArray<PHAsset *> *phassets, UIViewController *pickerViewController) {
-            [RGImagePicker loadResourceFromAssets:phassets completion:^(NSArray<NSData *> * _Nonnull imageData, NSError * _Nullable error) {
+            [RGImagePicker loadResourceFromAssets:phassets completion:^(NSArray<NSDictionary *> * _Nonnull imageData, NSError * _Nullable error) {
                 if (error) {
                     return;
                 }
@@ -305,7 +309,7 @@ static CGFloat kMinInputViewHeight = 60.f;
                 if (!imageData.count) {
                     return;
                 }
-                [CTUserConfig setChatBackgroundImageData:imageData.firstObject];
+                [CTUserConfig setChatBackgroundImageData:imageData.firstObject[RGImagePickerResourceData]];
             }];
         }];
     }
@@ -424,10 +428,7 @@ static CGFloat kMinInputViewHeight = 60.f;
         return;
     }
     if (!_needScrollToBottom) {
-        [RGMessageViewModel configCell:cell withMessage:message];
-        cell.contentView.alpha = 1.f;
-    } else {
-        cell.contentView.alpha = 0.f;
+        [RGMessageViewModel configCell:cell withMessage:message async:NO];
     }
 }
 
@@ -683,31 +684,53 @@ static CGFloat kMinInputViewHeight = 60.f;
         
         loading = YES;
         
-        [RGImagePicker loadResourceFromAssets:phassets completion:^(NSArray<NSData *> * _Nonnull imageData, NSError * _Nullable error) {
+        [RGImagePicker loadResourceFromAssets:phassets thumbSize:CGSizeMake(1280, 1280) completion:^(NSArray<NSDictionary *> * _Nonnull infos, NSError * _Nullable error) {
             loading = NO;
             if (error) {
                 return;
             }
             
             [pickerViewController.presentingViewController dismissViewControllerAnimated:YES completion:^{
-                [imageData enumerateObjectsUsingBlock:^(NSData * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                    
-                    if (!obj.length) {
+                [infos enumerateObjectsUsingBlock:^(NSDictionary * _Nonnull info, NSUInteger idx, BOOL * _Nonnull stop) {
+                    NSData *imageData = info[RGImagePickerResourceData];
+                    NSData *thumbData = info[RGImagePickerResourceThumbData];
+                    if (!imageData.length) {
                         return;
+                    }
+                    if (!thumbData.length) {
+                        thumbData = imageData;
                     }
                     
                     PHAsset *asset = phassets[idx];
                     
-                    CGSize size = CGSizeMake(asset.pixelWidth, asset.pixelHeight);
+                    NSString *filename = info[RGImagePickerResourceFilename];
+                    NSString *thumbName = nil;
+                    BOOL isGif = [[info[RGImagePickerResourceType] lowercaseString] containsString:@"gif"];
+                    if (isGif) {
+                        thumbName = [asset.localIdentifier stringByAppendingPathComponent:filename];
+                        thumbData = imageData;
+                    } else {
+                        thumbName = [asset.localIdentifier stringByAppendingPathComponent:[NSString stringWithFormat:@"thumb-%@", filename]];
+                    }
                     
-                    NSString *path = [CTFileManger.cacheManager createFile:asset.localIdentifier atFolder:UCChatDataFolderName data:obj];
+                    RGMessage *model = [RGMessage new];
+                    
+                    NSString *path = [CTFileManger.cacheManager createFile:thumbName atFolder:UCChatDataFolderName data:thumbData];
                     if (!path.length) {
                         return;
                     }
-                    RGMessage *model = [RGMessage new];
-                    model.thumbUrl = asset.localIdentifier;
-                    model.originalImageUrl = asset.localIdentifier;
-                    model.thumbSize = NSStringFromCGSize(size);
+                    model.thumbUrl = thumbName;
+                    model.thumbSize = info[RGImagePickerResourceThumbSize];
+                    
+                    filename = [asset.localIdentifier stringByAppendingPathComponent:filename];
+                    if (!isGif) {
+                        path = [CTFileManger.cacheManager createFile:filename atFolder:UCChatDataFolderName data:imageData];
+                        if (!path.length) {
+                            return;
+                        }
+                    }
+                    model.originalImageUrl = filename;
+                    model.originalImageSize = info[RGImagePickerResourceSize];
                     [self insertChatData:model];
                 }];
             }];
@@ -782,11 +805,120 @@ static CGFloat kMinInputViewHeight = 60.f;
 #pragma mark - CTChatTableViewCellActionDelegate
 
 - (void)shareChatTableViewCell:(CTChatTableViewCell *)cell {
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    if (!indexPath) {
+        return;
+    }
     
+    NSArray *items = nil;
+    UIView *target = nil;
+
+    RGMessage *message = self.messages[indexPath.row];
+    if (message.hasImage) {
+        items = @[[message imageUrlForThumb:NO]];
+        target = cell.thumbWapper;
+    } else {
+        items = @[cell.chatBubbleLabel.label.text];
+        target = cell.chatBubbleLabel;
+    }
+    
+    UIActivityViewController *activityVC = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
+    activityVC.completionWithItemsHandler = ^(UIActivityType  _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+        if (completed) {
+            
+        } else {
+            
+        }
+    };
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        activityVC.popoverPresentationController.sourceView = target;
+        [self presentViewController:activityVC animated:YES completion:nil];
+    } else {
+        [self presentViewController:activityVC animated:YES completion:nil];
+    }
 }
 
 - (void)lookupChatTableViewCell:(CTChatTableViewCell *)cell {
+    if (!cell.displayThumb) {
+        NSString *text = cell.chatBubbleLabel.label.text;
+        
+        NSError *error;
+        NSDataDetector *dataDetector=[NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink|NSTextCheckingTypePhoneNumber error:&error];
+        NSArray *arrayOfAllMatches = [dataDetector matchesInString:text options:NSMatchingReportProgress range:NSMakeRange(0, text.length)];
+        
+        if (arrayOfAllMatches.count <= 0) {
+            NSString *url = [@"https://www.baidu.com/s?wd=" stringByAppendingString:text];
+            [XJWebViewController showPopoverFrom:cell.chatBubbleLabel withUrl:url];
+            return;
+        }
+        
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+        for (NSTextCheckingResult *match in arrayOfAllMatches) {
+            NSString *subText = [text substringWithRange:match.range];
+            NSString *title = @"";
+            if (match.resultType == NSTextCheckingTypePhoneNumber) {
+                title = [NSString stringWithFormat:@"📞 %@", subText];
+            } else {
+                title = [NSString stringWithFormat:@"🔗 %@", subText];
+            }
+            [alert addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                if (match.resultType == NSTextCheckingTypePhoneNumber) {
+                    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"telprompt://%@", subText]]];
+                } else {
+                    [XJWebViewController showPopoverFrom:cell.chatBubbleLabel withUrl:subText];
+                }
+            }]];
+        }
+        
+        [alert addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"🔍 %@", text] style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            NSString *url = [@"https://www.baidu.com/s?wd=" stringByAppendingString:text];
+            [XJWebViewController showPopoverFrom:cell.chatBubbleLabel withUrl:url];
+        }]];
+        
+        [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+        
+        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+            alert.popoverPresentationController.sourceView = cell.thumbWapper;
+            [self presentViewController:alert animated:YES completion:nil];
+        } else {
+            [self presentViewController:alert animated:YES completion:nil];
+        }
+        return;
+    }
+    NSString *url = @"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=oNZv8Mk3re6t7kMTXI597811&client_secret=xSxCzRSmOBEym07hCnHzDQpBHnhXnlDK";
     
+    [[AFHTTPSessionManager manager]
+     POST:url
+     parameters:nil
+     progress:nil
+     success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+         
+         NSString *access_token = responseObject[@"access_token"];
+         if (!access_token.length) {
+             return;
+         }
+         
+         NSData *imgData = UIImageJPEGRepresentation(cell.thumbWapper.image, 1.0f);
+         NSString *encodedImageStr = [imgData base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+         NSString *url = [@"https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general?access_token=" stringByAppendingString:access_token];
+         [[AFHTTPSessionManager manager]
+          POST:url
+          parameters:@{
+                       @"image": encodedImageStr,
+                       @"baike_num": @(1),
+                       }
+          progress:nil
+          success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+              NSArray *result = responseObject[@"result"];
+              if (result && result.count > 0) {
+                  [CTImageClassifyTableViewController showPopoverFrom:cell.thumbWapper withInfo:result];
+              }
+          } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+              
+          }];
+     } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+         
+     }];
 }
 
 - (void)deleteChatTableViewCell:(CTChatTableViewCell *)cell {
@@ -839,6 +971,10 @@ static CGFloat kMinInputViewHeight = 60.f;
     NSInteger count = self.messages.count;
     BOOL isBottom = [self.tableView rg_isBottom];
     
+    void(^scrollToBottom)(void) = ^{
+        [self.tableView rg_scrollViewToBottom:YES];
+    };
+    
     void(^completion)(void) = ^ {
         [[change modificationsInSection:0] enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
             if (self.messages.count != count) {
@@ -849,14 +985,14 @@ static CGFloat kMinInputViewHeight = 60.f;
         }];
         if (change.insertions.count) {
             if (isBottom) {
-                [self.tableView rg_scrollViewToBottom:YES];
+                scrollToBottom();
                 return;
             }
             
             [change.insertions enumerateObjectsUsingBlock:^(NSNumber * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                 if ([self.messages[obj.integerValue].userId isEqualToString:self.mUserId]) {
                     *stop = YES;
-                    [self.tableView rg_scrollViewToBottom:YES];
+                    scrollToBottom();
                 }
             }];
         }
@@ -875,9 +1011,13 @@ static CGFloat kMinInputViewHeight = 60.f;
             [self.tableView beginUpdates];
             update();
             [self.tableView endUpdates];
+            [self.tableView reloadData];
+//            [self.tableView layoutIfNeeded];
             completion();
+            
         }
     };
+    
     if (change.insertions.count || change.deletions.count) {
         if (change.insertions.count) {
             [UIView performWithoutAnimation:^{
@@ -965,49 +1105,5 @@ static CGFloat kMinInputViewHeight = 60.f;
     self.tableView.dataSource = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
-
-/*
-// Override to support conditional editing of the table view.
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the specified item to be editable.
-    return YES;
-}
-*/
-
-/*
-// Override to support editing the table view.
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // Delete the row from the data source
-        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-    }   
-}
-*/
-
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath {
-}
-*/
-
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
-
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
 
 @end

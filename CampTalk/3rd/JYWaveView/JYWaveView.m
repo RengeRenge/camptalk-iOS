@@ -65,16 +65,18 @@
 }
 
 - (void)stop {
-    _frontWaveLayer.hidden = YES;
-    _insideWaveLayer.hidden = YES;
-    [_waveDisplayLink invalidate];
-    _waveDisplayLink = nil;
-    
-    CGMutablePathRef path = CGPathCreateMutable();
-    CGPathMoveToPoint(path, nil, waveWidth, self.bounds.size.height);
-    CGPathAddLineToPoint(path, nil, 0, self.bounds.size.height);
-    _frontWaveLayer.path = path;
-    _insideWaveLayer.path = path;
+    if (_waveDisplayLink) {
+        _frontWaveLayer.hidden = YES;
+        _insideWaveLayer.hidden = YES;
+        [_waveDisplayLink invalidate];
+        _waveDisplayLink = nil;
+        
+        CGMutablePathRef path = CGPathCreateMutable();
+        CGPathMoveToPoint(path, nil, waveWidth, self.bounds.size.height);
+        CGPathAddLineToPoint(path, nil, 0, self.bounds.size.height);
+        _frontWaveLayer.path = path;
+        _insideWaveLayer.path = path;
+    }
 }
 
 -(void)configWaveProperties

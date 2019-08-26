@@ -11,6 +11,13 @@
 #import "RGImageAlbumListViewController.h"
 #import <RGUIKit/RGUIKit.h>
 
+const NSString *RGImagePickerResourceType = @"type";
+const NSString *RGImagePickerResourceFilename = @"filename";
+const NSString *RGImagePickerResourceData = @"data";
+const NSString *RGImagePickerResourceThumbData = @"thumbData";
+const NSString *RGImagePickerResourceSize = @"size";
+const NSString *RGImagePickerResourceThumbSize = @"thumbSize";
+
 @implementation RGImagePicker
 
 + (RGImagePickerViewController *)presentByViewController:(UIViewController *)presentingViewController pickResult:(RGImagePickResult)pickResult {
@@ -47,7 +54,7 @@
     
     RGNavigationController *nvg = [RGNavigationController navigationWithRoot:list style:RGNavigationBackgroundStyleNormal];
     [nvg setViewControllers:@[list, vc] animated:NO];
-    nvg.modalPresentationStyle = UIModalPresentationOverCurrentContext;
+    nvg.modalPresentationStyle = UIModalPresentationOverFullScreen;
     nvg.tintColor = [UIColor blackColor];
     [presentingViewController presentViewController:nvg animated:YES completion:nil];
     
@@ -123,23 +130,27 @@
     }
 }
 
-+ (void)loadResourceFromAssets:(NSArray<PHAsset *> *)assets completion:(nonnull void (^)(NSArray<NSData *> * _Nonnull, NSError * _Nullable))completion {
++ (void)loadResourceFromAssets:(NSArray<PHAsset *> *)assets completion:(nonnull void (^)(NSArray<NSDictionary *> * _Nonnull, NSError * _Nullable))completion {
+    [self loadResourceFromAssets:assets thumbSize:CGSizeZero completion:completion];
+}
+
++ (void)loadResourceFromAssets:(NSArray<PHAsset *> *)assets thumbSize:(CGSize)thumbSize completion:(void (^)(NSArray<NSDictionary *> * _Nonnull, NSError * _Nullable))completion {
     if (assets.count == 0) {
         if (completion) {
             completion(@[], nil);
         }
     }
     
-    NSMutableArray <NSData *> *array = [NSMutableArray arrayWithCapacity:assets.count];
+    NSMutableArray <NSDictionary *> *array = [NSMutableArray arrayWithCapacity:assets.count];
     for (int i = 0; i < assets.count; i++) {
-        [array addObject:NSData.new];
+        [array addObject:@{}];
     }
 
     __block NSInteger count = assets.count;
     
     void(^callBackIfNeed)(NSError *error) = ^(NSError *error) {
         count--;
-        if ((count == 0 || error)&& completion) {
+        if ((count == 0 || error) && completion) {
             count = 0;
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(array, error);
@@ -148,28 +159,56 @@
     };
     
     [assets enumerateObjectsUsingBlock:^(PHAsset * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        [self loadResourceFromAsset:obj progressHandler:nil completion:^(NSData * _Nullable imageData, NSError * _Nullable error) {
-            if (imageData) {
-                [array replaceObjectAtIndex:idx withObject:imageData];
+        [self loadResourceFromAsset:obj progressHandler:nil completion:^(NSDictionary * _Nullable resource, NSError * _Nullable error) {
+            
+            if (error) {
+                callBackIfNeed(error);
+                return;
             }
-            callBackIfNeed(error);
+            
+            if ([resource[RGImagePickerResourceData] length]) {
+                if (!CGSizeEqualToSize(thumbSize, CGSizeZero)) {
+                    [self imageForAsset:obj syncLoad:NO allowNet:YES targetSize:thumbSize resizeMode:PHImageRequestOptionsResizeModeExact needImage:NO completion:^(NSData *thumbData) {
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                            NSMutableDictionary *newResource = [NSMutableDictionary dictionaryWithDictionary:resource];
+                            
+                            UIImage *thumbImage = [UIImage imageWithData:thumbData];
+                            NSData *smallData = UIImageJPEGRepresentation(thumbImage, 0.5);
+                            if (smallData.length > thumbData.length) {
+                                smallData = thumbData;
+                            } else {
+                                thumbImage = [UIImage imageWithData:smallData];
+                            }
+                            newResource[RGImagePickerResourceThumbData] = smallData;
+                            newResource[RGImagePickerResourceThumbSize] = NSStringFromCGSize(thumbImage.rg_pixSize);
+                            [array replaceObjectAtIndex:idx withObject:newResource];
+                            callBackIfNeed(error);
+                        });
+                    }];
+                } else {
+                    [array replaceObjectAtIndex:idx withObject:resource];
+                    callBackIfNeed(error);
+                }
+            } else {
+                callBackIfNeed(error);
+            }
         }];
     }];
 }
 
-+ (void)loadResourceFromAsset:(PHAsset *)asset progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable data, NSError * _Nullable error))completion {
++ (void)loadResourceFromAsset:(PHAsset *)asset progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSDictionary * _Nullable info, NSError * _Nullable error))completion {
     [self loadResourceFromAsset:asset networkAccessAllowed:YES progressHandler:progressHandler completion:completion];
 }
 
-+ (void)loadResourceFromAsset:(PHAsset *)asset networkAccessAllowed:(BOOL)networkAccessAllowed progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSData * _Nullable, NSError * _Nullable))completion {
++ (void)loadResourceFromAsset:(PHAsset *)asset networkAccessAllowed:(BOOL)networkAccessAllowed progressHandler:(void (^ _Nullable)(double))progressHandler completion:(void (^ _Nullable)(NSDictionary * _Nullable, NSError * _Nullable))completion {
     
-    void(^callBackIfNeed)(NSData *data, NSError *error) = ^(NSData *data, NSError *error) {
-        if (completion && (data.length || error)) {
+    void(^callBackIfNeed)(NSDictionary *resource, NSError *error) = ^(NSDictionary *resource, NSError *error) {
+        if (completion && (resource.count || error)) {
             dispatch_async(dispatch_get_main_queue(), ^{
 //                if (networkAccessAllowed && data.length) {
 //                    asset.rgIsLoaded = YES;
 //                }
-                completion(data, error);
+                completion(resource, error);
             });
         }
     };
@@ -193,7 +232,21 @@
             if (!imageData) {
                 return;
             }
-            callBackIfNeed(imageData, nil);
+            
+            NSURL *path = info[@"PHImageFileURLKey"];
+            NSString *filename = @"";
+            if (path) {
+                filename = path.lastPathComponent;
+            } else {
+                filename = [[NSUUID UUID].UUIDString stringByAppendingPathExtension:dataUTI.pathExtension];
+            }
+            CGSize size = CGSizeMake(asset.pixelWidth, asset.pixelHeight);
+            callBackIfNeed(@{
+                             RGImagePickerResourceData: imageData,
+                             RGImagePickerResourceSize: NSStringFromCGSize(size),
+                             RGImagePickerResourceType: dataUTI,
+                             RGImagePickerResourceFilename: filename,
+                             }, nil);
         }];
     };
     
@@ -226,12 +279,47 @@
             [[PHAssetResourceManager defaultManager] requestDataForAssetResource:obj options:option dataReceivedHandler:^(NSData * _Nonnull data) {
                 [imageData appendData:data];
             } completionHandler:^(NSError * _Nullable error) {
-                callBackIfNeed(imageData, error);
+                CGSize size = CGSizeMake(asset.pixelWidth, asset.pixelHeight);
+                callBackIfNeed(@{
+                                 RGImagePickerResourceData: imageData,
+                                 RGImagePickerResourceSize: NSStringFromCGSize(size),
+                                 RGImagePickerResourceType: obj.uniformTypeIdentifier,
+                                 RGImagePickerResourceFilename: obj.originalFilename,
+                                 }, error);
             }];
             break;
         }
     } else {
         oldMethod();
+    }
+}
+
++ (void)imageForAsset:(PHAsset *)asset
+             syncLoad:(BOOL)syncLoad
+             allowNet:(BOOL)allowNet
+           targetSize:(CGSize)targetSize
+           resizeMode:(PHImageRequestOptionsResizeMode)resizeMode
+            needImage:(BOOL)needImage
+           completion:(void(^_Nullable)(id image))completion {
+    
+    PHImageRequestOptions *op = [[PHImageRequestOptions alloc] init];
+    op.resizeMode = resizeMode;
+    op.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+    op.synchronous = syncLoad;
+    op.networkAccessAllowed = allowNet;
+    
+    if (needImage) {
+        [[PHCachingImageManager defaultManager] requestImageForAsset:asset targetSize:targetSize contentMode:PHImageContentModeAspectFill options:op resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
+            if (completion) {
+                completion(result);
+            }
+        }];
+    } else {
+        [[PHCachingImageManager defaultManager] requestImageDataForAsset:asset options:op resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
+            if (completion) {
+                completion(imageData);
+            }
+        }];
     }
 }
 
