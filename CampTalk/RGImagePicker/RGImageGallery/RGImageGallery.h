@@ -43,9 +43,9 @@ typedef enum : NSUInteger {
 
 - (void)showMessage:(NSString *)message atPercentY:(CGFloat)percentY;
 
-- (void)updatePages:(NSIndexSet *)pages;
-- (void)insertPages:(NSIndexSet *)pages;
-- (void)deletePages:(NSIndexSet *)pages;
+- (void)updatePages:(NSIndexSet *_Nullable)pages;
+- (void)insertPages:(NSIndexSet *_Nullable)pages;
+- (void)deletePages:(NSIndexSet *_Nullable)pages;
 
 - (void)reloadTitle;
 - (void)reloadToolBarItem;
@@ -57,10 +57,9 @@ typedef enum : NSUInteger {
 @protocol RGImageGalleryDelegate <NSObject>
 
 - (NSInteger)numOfImagesForImageGallery:(RGImageGallery *)imageGallery;
-- (UIView *)imageGallery:(RGImageGallery *)imageGallery thumbViewForTransitionAtIndex:(NSInteger)index;
 
 - (UIImage *)imageGallery:(RGImageGallery *)imageGallery thumbnailAtIndex:(NSInteger)index targetSize:(CGSize)targetSize;
-- (UIImage *)imageGallery:(RGImageGallery *)imageGallery imageAtIndex:(NSInteger)index targetSize:(CGSize)targetSize updateImage:(void(^_Nullable)(UIImage *image))updateImage;
+- (UIImage *_Nullable)imageGallery:(RGImageGallery *)imageGallery imageAtIndex:(NSInteger)index targetSize:(CGSize)targetSize updateImage:(void(^_Nullable)(UIImage *image))updateImage;
 
 - (UIColor *_Nullable)titleColorForImageGallery:(RGImageGallery *)imageGallery;
 - (NSString *_Nullable)titleForImageGallery:(RGImageGallery *)imageGallery AtIndex:(NSInteger)index;
@@ -68,6 +67,8 @@ typedef enum : NSUInteger {
 @optional
 
 - (void)configNavigationBarForImageGallery:(BOOL)forImageGallery imageGallery:(RGImageGallery *)imageGallery;
+
+- (UIView *_Nullable)imageGallery:(RGImageGallery *)imageGallery thumbViewForTransitionAtIndex:(NSInteger)index;
 
 - (BOOL)imageGallery:(RGImageGallery *)imageGallery toolBarItemsShouldDisplayForIndex:(NSInteger)index;
 - (NSArray <UIBarButtonItem *> *)imageGallery:(RGImageGallery *)imageGallery toolBarItemsForIndex:(NSInteger)index;

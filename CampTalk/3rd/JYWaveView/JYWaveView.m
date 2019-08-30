@@ -76,6 +76,7 @@
         CGPathAddLineToPoint(path, nil, 0, self.bounds.size.height);
         _frontWaveLayer.path = path;
         _insideWaveLayer.path = path;
+        CGPathRelease(path);
     }
 }
 

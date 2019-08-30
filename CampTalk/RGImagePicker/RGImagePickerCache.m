@@ -300,7 +300,7 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
     [[NSNotificationCenter defaultCenter] postNotificationName:RGImagePickerCachePickPhotosHasChanged object:nil];
     
     [self.imageGallery deletePages:delete];
-    [self.imageGallery insertPages:delete];
+    [self.imageGallery insertPages:insert];
     [self.imageGallery updatePages:update];
     
     [[NSNotificationCenter defaultCenter] postNotificationName:RGImagePickerCachePickPhotosHasChanged object:nil];
@@ -374,10 +374,6 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
 
 #pragma mark - RGImageGalleryDelegate
 
-- (nonnull UIView *)imageGallery:(nonnull RGImageGallery *)imageGallery thumbViewForTransitionAtIndex:(NSInteger)index {
-    return nil;
-}
-
 - (NSInteger)numOfImagesForImageGallery:(nonnull RGImageGallery *)imageGallery {
     return self.pickPhotos.count;
 }
@@ -406,7 +402,7 @@ NSNotificationName RGImagePickerCachePickPhotosHasChanged = @"RGImagePickerCache
 }
 
 - (NSString *_Nullable)titleForImageGallery:(RGImageGallery *)imageGallery AtIndex:(NSInteger)index {
-    return [NSString stringWithFormat:@"%lu/%lu", index+1, (unsigned long)self.pickPhotos.count];
+    return [NSString stringWithFormat:@"%ld/%lu", index+1, (unsigned long)self.pickPhotos.count];
 }
 
 - (BOOL)imageGallery:(RGImageGallery *)imageGallery toolBarItemsShouldDisplayForIndex:(NSInteger)index {
