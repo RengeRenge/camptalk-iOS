@@ -8,7 +8,7 @@
 
 #import "RGMessageViewModel.h"
 #import <RGUIKit/RGUIKit.h>
-#import "UIImageView+RGGif.h"
+#import <FLAnimatedImageView+RGWrapper.h>
 #import <SDWebImage/SDWebImage.h>
 #import "CTFileManger.h"
 #import "CTUserConfig.h"
@@ -77,7 +77,7 @@
         cell.loadThumbProresss = 1;
         [cell.thumbWapper.imageView rg_setImagePath:url.path
                                               async:async
-                                           delayGif:1.0
+                                       delayPlayGif:1.0
                                        continueLoad:nil];
     }
 }

@@ -9,7 +9,7 @@
 #import "CTChatTableViewCell.h"
 #import <RGUIKit/RGUIKit.h>
 #import "RGBubbleView.h"
-#import "UIImageView+RGGif.h"
+#import <FLAnimatedImageView+RGWrapper.h>
 #import "JYWaveView.h"
 
 static CGSize _maxIconSize = {40, 40};

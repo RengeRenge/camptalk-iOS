@@ -26,6 +26,8 @@
 
 #import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface CTFileManger : NSObject
 
 @property (nonatomic, copy) NSString *user;
@@ -46,4 +48,9 @@
 - (NSString *)createFile:(NSString *)fileName atFolder:(NSString *)folderName data:(NSData *)data;
 - (NSString *)createFile:(NSString *)fileName extension:(NSString *)extension atFolder:(NSString *)folderName data:(NSData *)data;
 
+- (BOOL)existedAtPath:(NSString *)path;
+- (BOOL)existedAtPath:(NSString *)path isDirectory:(nullable BOOL *)isDirectory;
+
 @end
+
+NS_ASSUME_NONNULL_END

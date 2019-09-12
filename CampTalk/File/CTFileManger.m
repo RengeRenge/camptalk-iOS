@@ -136,4 +136,13 @@
     return [self createFile:[fileName stringByAppendingFormat:format, extension] atFolder:folderName data:data];
 }
 
+- (BOOL)existedAtPath:(NSString *)path {
+    return [self existedAtPath:path isDirectory:nil];
+}
+
+- (BOOL)existedAtPath:(NSString *)path isDirectory:(nullable BOOL *)isDirectory {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    return [fileManager fileExistsAtPath:path isDirectory:isDirectory];
+}
+
 @end

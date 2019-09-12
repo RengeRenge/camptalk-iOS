@@ -7,7 +7,7 @@
 //
 
 #import "CTChatTableViewController.h"
-#import "RGImagePicker.h"
+#import "RGImagePickerConfig+RGSetting.h"
 
 #import "CTChatTableViewCell.h"
 #import "CTChatInputView.h"
@@ -15,7 +15,7 @@
 #import "CTCameraView.h"
 #import "CTMusicButton.h"
 
-#import "UIImageView+RGGif.h"
+#import <FLAnimatedImageView+RGWrapper.h>
 
 #import <RGUIKit/RGUIKit.h>
 #import "UIViewController+DragBarItem.h"
@@ -300,8 +300,10 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (void)__changeBg:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateBegan) {
-        [RGImagePicker presentByViewController:self pickResult:^(NSArray<PHAsset *> *phassets, UIViewController *pickerViewController) {
-            [RGImagePicker loadResourceFromAssets:phassets completion:^(NSArray<NSDictionary *> * _Nonnull imageData, NSError * _Nullable error) {
+        RGImagePickerConfig *config = [RGImagePickerConfig chatConfigWithImage:self.tableViewBackground.image];
+        
+        [RGImagePicker presentByViewController:self maxCount:1 config:config pickResult:^(NSArray<PHAsset *> * _Nonnull phassets, UIViewController * _Nonnull pickerViewController) {
+            [RGImagePicker loadResourceFromAssets:phassets loadOption:RGImagePickerLoadOnlyImage completion:^(NSArray<NSDictionary *> * _Nonnull imageData, NSError * _Nullable error) {
                 if (error) {
                     return;
                 }
@@ -334,8 +336,8 @@ static CGFloat kMinInputViewHeight = 60.f;
         [self.view addSubview:_tableViewCover];
     }
     
-    [_tableViewBackground rg_setImagePath:path async:NO delayGif:0.3 continueLoad:nil];
-    [_tableViewCover rg_setImagePath:path async:NO delayGif:0.3 continueLoad:nil];
+    [_tableViewBackground rg_setImagePath:path async:NO delayPlayGif:0.3 continueLoad:nil];
+    [_tableViewCover rg_setImagePath:path async:NO delayPlayGif:0.3 continueLoad:nil];
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__configInputViewTintColor) object:nil];
     [self performSelector:@selector(__configInputViewTintColor) withObject:nil afterDelay:0.3];
@@ -676,7 +678,9 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     __block BOOL loading;
     
-    [RGImagePicker presentByViewController:self maxCount:10 pickResult:^(NSArray<PHAsset *> *phassets, UIViewController *pickerViewController) {
+    RGImagePickerConfig *config = [RGImagePickerConfig chatConfigWithImage:self.tableViewBackground.image];
+    
+    [RGImagePicker presentByViewController:self maxCount:10 config:config pickResult:^(NSArray<PHAsset *> * _Nonnull phassets, UIViewController * _Nonnull pickerViewController) {
         
         if (loading) {
             return;
@@ -684,7 +688,7 @@ static CGFloat kMinInputViewHeight = 60.f;
         
         loading = YES;
         
-        [RGImagePicker loadResourceFromAssets:phassets thumbSize:CGSizeMake(1280, 1280) completion:^(NSArray<NSDictionary *> * _Nonnull infos, NSError * _Nullable error) {
+        [RGImagePicker loadResourceFromAssets:phassets loadOption:0 thumbSize:CGSizeMake(1280, 1280) completion:^(NSArray<NSDictionary *> * _Nonnull infos, NSError * _Nullable error) {
             loading = NO;
             if (error) {
                 return;
@@ -705,7 +709,7 @@ static CGFloat kMinInputViewHeight = 60.f;
                     
                     NSString *filename = info[RGImagePickerResourceFilename];
                     NSString *thumbName = nil;
-                    BOOL isGif = [[info[RGImagePickerResourceType] lowercaseString] containsString:@"gif"];
+                    BOOL isGif = [[info[RGImagePickerResourceUTI] lowercaseString] containsString:@"gif"];
                     if (isGif) {
                         thumbName = [asset.localIdentifier stringByAppendingPathComponent:filename];
                         thumbData = imageData;
@@ -1098,6 +1102,14 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
     return UIStatusBarStyleLightContent;
+}
+
+- (BOOL)prefersStatusBarHidden {
+    UINavigationController *nvg = (UINavigationController *)self.presentedViewController;
+    if (!nvg) {
+        return [super prefersStatusBarHidden];
+    }
+    return [nvg topViewController].prefersStatusBarHidden;
 }
 
 - (void)dealloc {

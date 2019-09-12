@@ -114,7 +114,9 @@
     cell.backgroundColor = [UIColor clearColor];
     cell.iconSize = CGSizeMake(52, 52);
     cell.applyThemeColor = YES;
-    cell.imageView.layer.cornerRadius = 26;
+    cell.iconResizeMode = RGIconResizeModeNone;
+    [cell setIconCorner:UIRectCornerAllCorners cornerRadius:15];
+    
     cell.textLabel.text = @"伟大如名应援会";
     cell.detailTextLabel.text = @"叶舞枫: [图片]";
     cell.detailTextLabel.font = [UIFont systemFontOfSize:13.f];
