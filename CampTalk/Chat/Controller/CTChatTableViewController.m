@@ -18,6 +18,7 @@
 #import <FLAnimatedImageView+RGWrapper.h>
 
 #import <RGUIKit/RGUIKit.h>
+#import <RGScrollLayoutCache/RGScrollLayoutCache.h>
 #import "UIViewController+DragBarItem.h"
 #import "UIView+PanGestureHelp.h"
 
@@ -35,7 +36,7 @@
 
 static CGFloat kMinInputViewHeight = 60.f;
 
-@interface CTChatTableViewController () <CTChatInputViewDelegate, RGUINavigationControllerShouldPopDelegate, CTCameraViewDelegate, UITableViewDataSource, UITableViewDelegate, CTChatTableViewCellActionDelegate>
+@interface CTChatTableViewController () <CTChatInputViewDelegate, RGUINavigationControllerShouldPopDelegate, CTCameraViewDelegate, UITableViewDataSource, UITableViewDelegate, CTChatTableViewCellActionDelegate, RGLayoutCacheDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) CTStubbornView *tableViewCover;
@@ -48,14 +49,14 @@ static CGFloat kMinInputViewHeight = 60.f;
 @property (nonatomic, assign) BOOL needScrollToBottom;
 @property (nonatomic, assign) BOOL viewControllerWillPop;
 
+@property (nonatomic, assign) BOOL darkStyle;
+
 @property (nonatomic, strong) NSIndexPath *recordMaxIndexPath;
 @property (nonatomic, assign) CGPoint recordOffSet;
 
 @property (nonatomic, strong) RLMResults <RGMessage *> *messages;
 @property (nonatomic, strong) RLMNotificationToken *messagesToken;
 @property (nonatomic, strong) RLMResults <RGMessage *> *unReadMessages;
-
-@property (nonatomic, strong) CTMusicButton *dragButton;
 
 @end
 
@@ -75,6 +76,11 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
+    self.tableView.rg_autoLayoutCache = YES;
+    self.tableView.rg_layoutCacheDelegate = self;
+    self.tableView.rg_layoutCacheLogEnable = YES;
+    self.tableView.rg_layoutCacheDependOn = RGLayoutCacheDependOnWidth;
+    
     UILongPressGestureRecognizer *longeTap = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(__changeBg:)];
     [self.tableView addGestureRecognizer:longeTap];
     [self.view addSubview:self.tableView];
@@ -95,7 +101,10 @@ static CGFloat kMinInputViewHeight = 60.f;
         }
         [wSelf __realmResults:results change:change error:error];
     }];
-    
+    NSInteger count = _messages.count;
+    [self.tableView rg_startCachingLayoutForSections:[NSIndexSet indexSetWithIndex:0] count:^NSInteger(NSInteger section) {
+        return count;
+    }];
     _unReadMessages = [RGMessage unreadMessageWithRoomId:self.roomId username:self.mUserId];
     
     [self setNeedScrollToBottom:YES];
@@ -139,11 +148,10 @@ static CGFloat kMinInputViewHeight = 60.f;
             NSArray<__kindof UITableViewCell *> *visibleCells = self.tableView.visibleCells;
             NSArray<NSIndexPath *> *indexPathsForVisibleRows = self.tableView.indexPathsForVisibleRows;
             [visibleCells enumerateObjectsUsingBlock:^(__kindof UITableViewCell * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                RGMessage *msg = self.messages[indexPathsForVisibleRows[idx].row];
-                [self _configCell:obj withMessage:msg];
+                NSInteger index = indexPathsForVisibleRows[idx].row;
+                [self _configCell:obj withIndex:index];
                 [obj setNeedsLayout];
             }];
-            
             [UIView animateWithDuration:0.5 animations:^{
                 self.tableView.alpha = 1;
             }];
@@ -156,6 +164,16 @@ static CGFloat kMinInputViewHeight = 60.f;
     CGFloat recordTBHeight = self.tableView.frame.size.height;
     
     self.tableView.frame = self.view.bounds;
+//    NSArray <NSIndexPath *> *visible = self.tableView.indexPathsForVisibleRows;
+    
+//    [self.tableView rg_updateFrame:self.view.bounds needClearCache:^BOOL(CGRect lastFrame) {
+//        return self.view.frame.size.width != lastFrame.size.width;
+//    } continueBlock:^(BOOL hasClear) {
+//        if (hasClear) {
+//            [self.tableView rg_startCachingLayoutForIndexPaths:visible];
+//        }
+//    }];
+    
     UIEdgeInsets edge = UIEdgeInsetsMake(0, 0, self.tableView.contentInset.bottom, 0);
     [self rg_setFullFrameScrollView:self.tableView wtihAdditionalContentInset:edge];
     
@@ -198,6 +216,14 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__configInputViewTintColor) object:nil];
     [self performSelector:@selector(__configInputViewTintColor) withObject:nil afterDelay:0.3];
+}
+
+- (void)setDarkStyle:(BOOL)darkStyle {
+    if (_darkStyle == darkStyle) {
+        return;
+    }
+    _darkStyle = darkStyle;
+    [self.tableView reloadData];
 }
 
 - (void)__configIconPlace {
@@ -344,6 +370,14 @@ static CGFloat kMinInputViewHeight = 60.f;
     
     [NSObject cancelPreviousPerformRequestsWithTarget:_cameraView selector:@selector(adjustTintColor) object:nil];
     [_cameraView performSelector:@selector(adjustTintColor) withObject:nil afterDelay:0.3];
+    
+    UIImage *image = _tableViewBackground.image;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        BOOL darkStyle = image.rg_mainColor.rg_isDarkColor;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.darkStyle = darkStyle;
+        });
+    });
 }
 
 - (UIView *)iconCopyWithIconId:(CTChatToolIconId)iconId {
@@ -376,6 +410,14 @@ static CGFloat kMinInputViewHeight = 60.f;
     [_tableViewCover setGradientBegain:begain end:end];
 }
 
+- (void)feedback {
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [generator prepare];
+        [generator impactOccurred];
+    }
+}
+
 #pragma mark - RGUINavigationControllerShouldPopDelegate
 
 - (BOOL)rg_navigationControllerShouldPop:(UINavigationController *)navigationController isInteractive:(BOOL)isInteractive {
@@ -396,6 +438,29 @@ static CGFloat kMinInputViewHeight = 60.f;
     }
 }
 
+#pragma mark - RGLayoutCacheDelegate
+
+- (CGSize)scrollView:(UIScrollView *)scrollView scrollViewFrame:(CGRect)frame cacheSizeForRowAtIndexPath:(NSIndexPath *)indexPath isMainThread:(BOOL)isMainThread {
+    RGMessage *model = nil;
+    if (!isMainThread) {
+        model = [RGMessage messageWithRoomId:self.roomId username:self.mUserId][indexPath.row];
+    } else {
+        model = _messages[indexPath.row];
+    }
+    
+    CGFloat height = 0;
+    if (model.thumbUrl) {
+        height = [CTChatTableViewCell heightWithThumbSize:model.g_thumbSize width:frame.size.width];
+    } else if (model.message.length) {
+        height = [CTChatTableViewCell heightWithText:model.message width:frame.size.width];
+    }
+    return CGSizeMake(0, height);
+}
+
+- (NSString *)scrollView:(UIScrollView *)scrollView cacheSizeIdAtIndexPath:(NSIndexPath *)indexPath {
+    return _messages[indexPath.row].msgId;
+}
+
 #pragma mark - Table view data source
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
@@ -406,31 +471,49 @@ static CGFloat kMinInputViewHeight = 60.f;
     return _messages.count;
 }
 
-
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    RGMessage *model = _messages[indexPath.row];
-    if (model.thumbUrl) {
-        return [CTChatTableViewCell heightWithThumbSize:model.g_thumbSize tableView:tableView];
-    } else if (model.message.length) {
-        return [CTChatTableViewCell heightWithText:model.message tableView:tableView];
-    }
-    return 0.f;
+    return [tableView rg_layoutCacheSizeAtIndexPath:indexPath].height;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     CTChatTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CTChatTableViewCellId forIndexPath:indexPath];
     cell.delegate = self;
-    RGMessage *message = _messages[indexPath.row];
-    [self _configCell:cell withMessage:message];
+    [self _configCell:cell withIndex:indexPath.row];
     return cell;
 }
 
-- (void)_configCell:(CTChatTableViewCell *)cell withMessage:(RGMessage *)message {
+- (void)_configCell:(CTChatTableViewCell *)cell withIndex:(NSInteger)index {
     if (!cell) {
         return;
     }
     if (!_needScrollToBottom) {
-        [RGMessageViewModel configCell:cell withMessage:message async:NO];
+        
+        RGMessage *message = _messages[index];
+        
+        BOOL showTimeLabel = NO;
+        if (index - 1 < 0) {
+            showTimeLabel = YES;
+        } else {
+            RGMessage *last = _messages[index - 1];
+            NSInteger lastTime = last.sendTime/1000;
+            NSInteger thisTime = message.sendTime/1000;
+            if (thisTime - lastTime > 60) {
+                showTimeLabel = YES;
+            } else {
+//                NSCalendar *cal = [NSCalendar currentCalendar];
+//                NSInteger a = [cal components:NSCalendarUnitMinute fromDate:[NSDate dateWithTimeIntervalSince1970:thisTime]].minute;
+//                NSInteger b = [cal components:NSCalendarUnitMinute fromDate:[NSDate dateWithTimeIntervalSince1970:lastTime]].minute;
+//                if (a != b) {
+//                    showTimeLabel = YES;
+//                }
+            }
+        }
+        
+        [RGMessageViewModel configCell:cell
+                           withMessage:message
+                         showTimeLabel:showTimeLabel
+                             darkColor:self.darkStyle
+                                 async:NO];
     }
 }
 
@@ -481,6 +564,10 @@ static CGFloat kMinInputViewHeight = 60.f;
     [self __configInputViewLayout];
 }
 
+- (void)chatInputView:(CTChatInputView *)chatInputView willDrag:(CTChatInputViewToolBarItem *)item {
+    [self feedback];
+}
+
 - (void)chatInputView:(CTChatInputView *)chatInputView willRemoveItem:(CTChatInputViewToolBarItem *)item syncAnimations:(void (^)(void))syncAnimations {
     
     __weak typeof(self) wSelf = self;
@@ -508,6 +595,7 @@ static CGFloat kMinInputViewHeight = 60.f;
                                              
                                              [wSelf.cameraView showCameraButtonWithAnimate:NO];
                                              [wSelf.cameraView performSelector:@selector(hideCameraButton) withObject:nil afterDelay:1];
+                                             [wSelf feedback];
                                              
                                              [UIView animateWithDuration:0.3 animations:^{
                                                  syncAnimations();
@@ -525,6 +613,7 @@ static CGFloat kMinInputViewHeight = 60.f;
 - (void)chatInputView:(CTChatInputView *)chatInputView didAddItem:(CTChatInputViewToolBarItem *)item {
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(__configInputViewTintColor) object:nil];
     [self __configInputViewTintColor];
+    [self feedback];
 }
 
 - (void)chatInputView:(CTChatInputView *)chatInputView didTapActionButton:(UIButton *)button {
@@ -627,6 +716,10 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 #pragma mark - CTCameraViewDelegate
+
+- (void)cameraView:(CTCameraView *)cameraView willDragButton:(UIButton *)cameraButton {
+    [self feedback];
+}
 
 - (void)cameraView:(CTCameraView *)cameraView didDragButton:(UIButton *)cameraButton {
     [_mInputView updateInputViewDragIcon:cameraButton toolId:CTChatToolIconIdCamara copyIconBlock:^UIView *{
@@ -753,7 +846,7 @@ static CGFloat kMinInputViewHeight = 60.f;
     music.clickBlock = ^(CTMusicButton *button) {
         [wSelf playMusic:button];
     };
-    music.isPlaying = YES;
+    music.isPlaying = NO;
     return music;
 }
 
@@ -763,6 +856,10 @@ static CGFloat kMinInputViewHeight = 60.f;
 }
 
 #pragma mark - UIViewController + DragBarItem
+
+- (void)dragItem:(UIView *)icon willDrag:(NSInteger)itemId {
+    [self feedback];
+}
 
 - (void)dragItem:(UIView *)icon didDrag:(NSInteger)itmeId {
     [_mInputView updateInputViewDragIcon:icon toolId:itmeId copyIconBlock:^UIView *{
@@ -793,9 +890,15 @@ static CGFloat kMinInputViewHeight = 60.f;
             
             [wSelf.cameraView showCameraButtonWithAnimate:NO];
             [wSelf.cameraView performSelector:@selector(hideCameraButton) withObject:nil afterDelay:1];
+            
+            [wSelf feedback];
         }
     }];
     return remove;
+}
+
+- (void)dragItemWillDragAdd:(UIView *)icon didDrag:(NSInteger)itemId {
+    [self feedback];
 }
 
 - (void)dragItemDidDragAdd:(UIView *)icon didDrag:(NSInteger)itemId {
@@ -834,8 +937,8 @@ static CGFloat kMinInputViewHeight = 60.f;
             
         }
     };
+    activityVC.popoverPresentationController.sourceView = target;
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        activityVC.popoverPresentationController.sourceView = target;
         [self presentViewController:activityVC animated:YES completion:nil];
     } else {
         [self presentViewController:activityVC animated:YES completion:nil];
@@ -985,7 +1088,7 @@ static CGFloat kMinInputViewHeight = 60.f;
                 *stop = YES;
                 return;
             }
-            [self _configCell:[self.tableView cellForRowAtIndexPath:obj] withMessage:self.messages[obj.row]];
+            [self _configCell:[self.tableView cellForRowAtIndexPath:obj] withIndex:obj.row];
         }];
         if (change.insertions.count) {
             if (isBottom) {
@@ -1106,10 +1209,13 @@ static CGFloat kMinInputViewHeight = 60.f;
 
 - (BOOL)prefersStatusBarHidden {
     UINavigationController *nvg = (UINavigationController *)self.presentedViewController;
-    if (!nvg) {
-        return [super prefersStatusBarHidden];
+    if (nvg) {
+        if ([nvg isKindOfClass:UINavigationController.class]) {
+            return [nvg topViewController].prefersStatusBarHidden;
+        }
+        return [nvg prefersStatusBarHidden];
     }
-    return [nvg topViewController].prefersStatusBarHidden;
+    return [super prefersStatusBarHidden];
 }
 
 - (void)dealloc {

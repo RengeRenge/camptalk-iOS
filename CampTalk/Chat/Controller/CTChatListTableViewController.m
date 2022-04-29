@@ -16,6 +16,7 @@
 @interface CTChatListTableViewController ()
 
 @property (nonatomic, strong) CTStubbornView *tableViewCover;
+@property (nonatomic, strong) UIImage *icon;
 
 @end
 
@@ -64,7 +65,7 @@
 }
 
 - (void)configBgImageView:(UIImageView *)bgImageView {
-    [self backgroundImage:^(UIImage *image) {
+    [self _getBackgroundImage:^(UIImage *image) {
         bgImageView.image = image;
     }];
     bgImageView.contentMode = UIViewContentModeScaleAspectFill;
@@ -74,14 +75,24 @@
         mask = [[UIView alloc] initWithFrame:bgImageView.bounds];
         mask.tag = 1;
         mask.backgroundColor = [UIColor colorWithWhite:0 alpha:0.2f];
-        mask.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
+        mask.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
         [bgImageView addSubview:mask];
     }
 }
 
-- (void)backgroundImage:(void(^)(UIImage *image))image {
+- (void)_getBackgroundImage:(void(^)(UIImage *image))image {
     if (image) {
-        image([UIImage rg_imageWithFullName:@"[Moozzi2] Yuru Camp - 05 (BD 1920x1080 x.264 Flac)-0002" extension:@"png"]);
+        UIImage *bg = [UIImage rg_imageWithFullName:@"[Moozzi2] Yuru Camp - 05 (BD 1920x1080 x.264 Flac)-0002" extension:@"png"];
+        image(bg);
+    }
+}
+
+- (void)_getIcon:(void(^)(UIImage *image))image {
+    if (image) {
+        if (!_icon) {
+            _icon = [UIImage rg_imageWithFullName:@"miziha" extension:@"JPG"];
+        }
+        image(_icon);
     }
 }
 
@@ -106,7 +117,7 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return 10;
+    return NSIntegerMax>>48;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -114,7 +125,6 @@
     cell.backgroundColor = [UIColor clearColor];
     cell.iconSize = CGSizeMake(52, 52);
     cell.applyThemeColor = YES;
-    cell.iconResizeMode = RGIconResizeModeNone;
     [cell setIconCorner:UIRectCornerAllCorners cornerRadius:15];
     
     cell.textLabel.text = @"伟大如名应援会";
@@ -124,8 +134,9 @@
     cell.textLabel.textColor = [UIColor whiteColor];
     cell.detailTextLabel.textColor = [UIColor whiteColor];
     
-    cell.imageView.image = [UIImage rg_imageWithFullName:@"miziha" extension:@"JPG"];
-    
+    [self _getIcon:^(UIImage *image) {
+        cell.imageView.image = image;
+    }];
     return cell;
 }
 

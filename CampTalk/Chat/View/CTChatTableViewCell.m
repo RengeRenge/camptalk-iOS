@@ -12,13 +12,13 @@
 #import <FLAnimatedImageView+RGWrapper.h>
 #import "JYWaveView.h"
 
-static CGSize _maxIconSize = {40, 40};
 static CGFloat _chatCelIIconWidth = 40;
+static CGSize _maxIconSize = {40, 40};
 
 static CGFloat _margin = 15;
 static CGFloat _marginBubble = 4.f;
 
-static CGFloat _marginTop = 20;
+static CGFloat _marginTop = 30;
 
 NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 
@@ -98,7 +98,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     [UIView animateWithDuration:1.f animations:^{
         self.waveView.alpha = 0;
         self.thumbWapper.imageView.alpha = 1;
-        self.thumbWapper.backgroundView.backgroundColor = [UIColor whiteColor];
+        self.thumbWapper.backgroundView.backgroundColor = [UIColor rg_systemBackgroundColor];
     } completion:^(BOOL finished) {
         if (loadThumbProresss == self->_loadThumbProresss) {
             [self.waveView stop];
@@ -120,7 +120,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     }
     _displayLocalThumb = displayLocalThumb;
     if (displayLocalThumb) {
-        self.thumbWapper.backgroundView.backgroundColor = [UIColor whiteColor];
+        self.thumbWapper.backgroundView.backgroundColor = [UIColor rg_systemBackgroundColor];
     }
     [self setNeedsLayout];
 }
@@ -152,11 +152,10 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     }
     
     CGRect bounds = self.contentView.bounds;
-    CGFloat height = bounds.size.height;
     
     // 头像布局，头像宽不超出 _chatCelIIconWidth，高度不超出父视图的高度，否则按比例缩放头像至全部显示
     
-    CGSize iconSize = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(_chatCelIIconWidth, height) imageSize:self.iconView.image.rg_logicSize];
+    CGSize iconSize = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(_chatCelIIconWidth, bounds.size.height) imageSize:self.iconView.image.rg_logicSize];
     
     self.iconView.frame =
     CGRectMake(
@@ -166,18 +165,23 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
                iconSize.height
                );
     
-    CGRect contentBounds = UIEdgeInsetsInsetRect(bounds, UIEdgeInsetsMake(0, _chatCelIIconWidth + _margin + _marginBubble, 0, _chatCelIIconWidth + _margin));
+    CGRect contentBounds = UIEdgeInsetsInsetRect(bounds, UIEdgeInsetsMake(_marginTop, _maxIconSize.width + _margin + _marginBubble, 0, _maxIconSize.width + _margin));
     
     if (self.displayThumb) {
         //图片布局
         CGSize thumbLogicSize = [UIImage rg_logicSizeWithPixSize:self.thumbPixSize];
         
-        CGSize size = [CTChatTableViewCell imageSizeThatFits:CGSizeMake(contentBounds.size.width, height - [self.class imageSizeHeightExt]) imageSize:thumbLogicSize];
+        CGSize size = [CTChatTableViewCell
+                       imageSizeThatFits:CGSizeMake(
+                                                    contentBounds.size.width,
+                                                    contentBounds.size.height - [self.class imageSizeHeightExt]
+                                                    )
+                       imageSize:thumbLogicSize];
         
         size = [self.thumbWapper setBoundsWithImageSize:size].size;
         size.width = MIN(size.width, contentBounds.size.width);
         contentBounds.size = size;
-        contentBounds.origin.y = bounds.size.height - contentBounds.size.height;
+        contentBounds.origin.y = contentBounds.origin.y + contentBounds.size.height - contentBounds.size.height;
         self.thumbWapper.frame = contentBounds;
         self.waveView.waveBottomWillToHeight = self.thumbWapper.bounds.size.height*self.loadThumbProresss;
         
@@ -194,7 +198,7 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
 //            labelSize.height -= _marginTop;
 //        }
         
-        contentBounds.origin.y = contentBounds.size.height - labelSize.height;
+        contentBounds.origin.y = contentBounds.origin.y + contentBounds.size.height - labelSize.height;
         contentBounds.size = labelSize;
         self.chatBubbleLabel.frame = contentBounds;
         
@@ -206,6 +210,11 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
         [self.contentView.subviews enumerateObjectsUsingBlock:^(__kindof UIView * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
             [obj rg_setFrameToFitRTL];
         }];
+    }
+    
+    if (!self.timeLabel.hidden) {
+        [self.timeLabel sizeToFit];
+        self.timeLabel.center = CGPointMake(bounds.size.width/2.f, _marginTop/2.f);
     }
 }
 
@@ -240,10 +249,10 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     return imageSize;
 }
 
-+ (CGFloat)heightWithText:(NSString *)string tableView:(UITableView *)tableView {
++ (CGFloat)heightWithText:(NSString *)string width:(CGFloat)width {
     
-    CGSize size = CGSizeMake(tableView.frame.size.width, CGFLOAT_MAX);
-    size.width -= (_maxIconSize.width + _margin * 2 + _marginBubble);
+    CGSize size = CGSizeMake(width, CGFLOAT_MAX);
+    size.width -= (_maxIconSize.width * 2 + _margin * 2 + _marginBubble);
     
     CGFloat height = [CTChatBubbleLabel heightWithString:string fits:size].height;
     height = MAX(height, _maxIconSize.height);
@@ -251,27 +260,27 @@ NSString * const CTChatTableViewCellId = @"kCTChatTableViewCellId";
     return height;
 }
 
-+ (CGFloat)estimatedHeightWithText:(NSString *)string tableView:(UITableView *)tableView {
++ (CGFloat)estimatedHeightWithText:(NSString *)string width:(CGFloat)width {
     // Size 25 * 25
-    return (string.length * 25.f) / (tableView.frame.size.width - _maxIconSize.width - _margin * 2 - _marginBubble) * 25;
+    return (string.length * 25.f) / (width - _maxIconSize.width - _margin * 2 - _marginBubble) * 25;
 }
 
-+ (CGFloat)heightWithThumbSize:(CGSize)thumbSize tableView:(UITableView *)tableView {
++ (CGFloat)heightWithThumbSize:(CGSize)thumbSize width:(CGFloat)width {
     
     thumbSize = [UIImage rg_logicSizeWithPixSize:thumbSize];
     
-    CGSize fits = CGSizeMake((tableView.frame.size.width - 2 * _maxIconSize.width - _margin * 2 - _marginBubble), 200.f);
-    fits.width = MIN(fits.width, tableView.frame.size.width/2.f);
+    CGSize fits = CGSizeMake((width - 2 * _maxIconSize.width - _margin * 2 - _marginBubble), 140.f);
+    fits.width = MIN(fits.width, width/2.f);
     
     fits.height = [self imageSizeThatFits:fits imageSize:thumbSize].height;
     fits.height = MAX(fits.height, _maxIconSize.height);
     
-    return fits.height + [self imageSizeHeightExt];
+    return _marginTop + fits.height + [self imageSizeHeightExt];
 }
 
 + (CGFloat)imageSizeHeightExt {
     UIEdgeInsets bubbleInset = [CTBubbleImageView contentViewEdgeWithRightToLeft:NO];
-    return _marginTop + bubbleInset.bottom + bubbleInset.top;
+    return bubbleInset.bottom + bubbleInset.top;
 }
 
 - (BOOL)isLookMe {

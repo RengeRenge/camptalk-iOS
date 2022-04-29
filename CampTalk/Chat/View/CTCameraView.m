@@ -84,7 +84,7 @@ static CGPoint __recordCenter; // [0,1]
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(adjustTintColor) object:nil];
     if (_tintColorEffectView) {
         CGRect rect = [self convertRect:_cameraButton.frame toView:_tintColorEffectView];
-        UIImage *image = [UIImage rg_convertViewToImage:_tintColorEffectView rect:rect];
+        UIImage *image = [_tintColorEffectView rg_convertToImageInRect:rect];
         [self adjustTintColorWithBackgroundImage:image];
     }
 }
@@ -223,6 +223,9 @@ static CGPoint __recordCenter; // [0,1]
         case UIGestureRecognizerStateBegan:
             [self showCameraButtonWithAnimate:YES];
             _moveCenter = [recognizer translationInView:self];
+            if ([_delegate respondsToSelector:@selector(cameraView:didDragButton:)]) {
+                [_delegate cameraView:self willDragButton:self.cameraButton];
+            }
             break;
         case UIGestureRecognizerStateChanged: {
             CGPoint translation = [recognizer translationInView:self];

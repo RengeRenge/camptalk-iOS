@@ -7,6 +7,7 @@
 //
 
 #import "RGBubbleView.h"
+#import <RGUIKit/RGUIKit.h>
 
 static CGFloat kBubbleLineWidth = 2.f;
 
@@ -29,7 +30,7 @@ static CGFloat kBubbleLineWidth = 2.f;
     if (!_bubbleBorder) {
         _bubbleBorder = [CAShapeLayer layer];
         _bubbleBorder.fillColor = [UIColor clearColor].CGColor;
-        _bubbleBorder.strokeColor = [UIColor whiteColor].CGColor;
+        _bubbleBorder.strokeColor = [UIColor rg_systemBackgroundColor].CGColor;
         _bubbleBorder.lineWidth = kBubbleLineWidth * 2.f;
         _bubbleBorder.lineJoin = kCALineJoinRound;
         [self.layer addSublayer:_bubbleBorder];
@@ -81,6 +82,11 @@ static CGFloat kBubbleLineWidth = 2.f;
     UIEdgeInsets edge = [self contentViewEdge];
     self.contentView.frame = UIEdgeInsetsInsetRect(self.bounds, edge);
     self.backgroundView.frame = self.bounds;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    _bubbleBorder.strokeColor = [UIColor rg_systemBackgroundColor].CGColor;
 }
 
 - (UIBezierPath *)bubblePathWithSize:(CGSize)size {

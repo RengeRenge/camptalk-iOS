@@ -7,6 +7,7 @@
 //
 
 #import "RGImagePickerConfig+RGSetting.h"
+#import <RGUIKit/RGUIKit.h>
 
 @implementation RGImagePickerConfig(RGSetting)
 
@@ -14,7 +15,7 @@
     RGImagePickerConfig *config = [RGImagePickerConfig new];
     config.backgroundImage = image;
     config.backgroundBlurRadius = 3.5;
-    config.tintColor = [UIColor blackColor];
+    config.tintColor = [UIColor rg_labelColor];
     
     NSMutableArray *array = [NSMutableArray array];
     

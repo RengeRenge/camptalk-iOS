@@ -63,10 +63,18 @@
 		E6640CF3231BD17100142AE3 /* RGImagePickerConfig+RGSetting.m in Sources */ = {isa = PBXBuildFile; fileRef = E6640CF1231BD17100142AE3 /* RGImagePickerConfig+RGSetting.m */; };
 		E671495720B50971009070D0 /* corver1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E671495620B50971009070D0 /* corver1.jpg */; };
 		E671495820B50971009070D0 /* corver1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E671495620B50971009070D0 /* corver1.jpg */; };
+		E67B56BC235AB188007EFA99 /* RGSocketIOManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E67B56BB235AB188007EFA99 /* RGSocketIOManager.m */; };
+		E67B56BD235AB188007EFA99 /* RGSocketIOManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E67B56BB235AB188007EFA99 /* RGSocketIOManager.m */; };
+		E68028ED2361ABBE0016E161 /* CTTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E68028EB2361ABBE0016E161 /* CTTestViewController.m */; };
+		E68028EE2361ABBE0016E161 /* CTTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E68028EB2361ABBE0016E161 /* CTTestViewController.m */; };
+		E68028EF2361ABBE0016E161 /* CTTestViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = E68028EC2361ABBE0016E161 /* CTTestViewController.xib */; };
+		E68028F02361ABBE0016E161 /* CTTestViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = E68028EC2361ABBE0016E161 /* CTTestViewController.xib */; };
 		E684BCF320A6FD3A00C3E973 /* camp07.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF220A6FD3900C3E973 /* camp07.gif */; };
 		E684BCF420A6FD3A00C3E973 /* camp07.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF220A6FD3900C3E973 /* camp07.gif */; };
 		E684BCF620A700A000C3E973 /* yuru_camp_login.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF520A7009F00C3E973 /* yuru_camp_login.gif */; };
 		E684BCF720A700A000C3E973 /* yuru_camp_login.gif in Resources */ = {isa = PBXBuildFile; fileRef = E684BCF520A7009F00C3E973 /* yuru_camp_login.gif */; };
+		E685A6D7236092FD0069D24B /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E685A6D6236092FC0069D24B /* SceneDelegate.m */; };
+		E685A6D8236092FD0069D24B /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E685A6D6236092FC0069D24B /* SceneDelegate.m */; };
 		E6A2D52E2318AFF9003908A5 /* CTBubbleImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */; };
 		E6A2D52F2318AFF9003908A5 /* CTBubbleImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */; };
 		E6AA7B81230FE7C9002CB741 /* RGRealmManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E6AA7B80230FE7C9002CB741 /* RGRealmManager.m */; };
@@ -85,6 +93,8 @@
 		E6B7F47E20944FA900918BC8 /* UIView+PanGestureHelp.m in Sources */ = {isa = PBXBuildFile; fileRef = E6B7F47C20944FA900918BC8 /* UIView+PanGestureHelp.m */; };
 		E6B7F48B2096869800918BC8 /* CTMusicButton.m in Sources */ = {isa = PBXBuildFile; fileRef = E6B7F48A2096869800918BC8 /* CTMusicButton.m */; };
 		E6B7F48C2096869800918BC8 /* CTMusicButton.m in Sources */ = {isa = PBXBuildFile; fileRef = E6B7F48A2096869800918BC8 /* CTMusicButton.m */; };
+		E6D216D8239DF3E100C5028D /* YYFPSLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D216D7239DF3E100C5028D /* YYFPSLabel.m */; };
+		E6D216D9239DF3E100C5028D /* YYFPSLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D216D7239DF3E100C5028D /* YYFPSLabel.m */; };
 		E6D3BAC622F2DE6600A6E595 /* CTChatIconConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAC522F2DE6600A6E595 /* CTChatIconConfig.m */; };
 		E6D3BAC722F2DE6600A6E595 /* CTChatIconConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = E6D3BAC522F2DE6600A6E595 /* CTChatIconConfig.m */; };
 		E6D3BADB22F3F0D500A6E595 /* [Moozzi2] Yuru Camp - 05 (BD 1920x1080 x.264 Flac)-0002.png in Resources */ = {isa = PBXBuildFile; fileRef = E6D3BADA22F3F0D400A6E595 /* [Moozzi2] Yuru Camp - 05 (BD 1920x1080 x.264 Flac)-0002.png */; };
@@ -97,6 +107,8 @@
 		E6D3BAE522F4123300A6E595 /* 8bit2.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6D3BAE322F4123300A6E595 /* 8bit2.jpg */; };
 		E6E05AD7209C358C00C54A24 /* chatBg_1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */; };
 		E6E05AD8209C358C00C54A24 /* chatBg_1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */; };
+		E6E8499E23AA36120096ECD0 /* RGChangeArray.m in Sources */ = {isa = PBXBuildFile; fileRef = E6E8499D23AA36120096ECD0 /* RGChangeArray.m */; };
+		E6E8499F23AA36120096ECD0 /* RGChangeArray.m in Sources */ = {isa = PBXBuildFile; fileRef = E6E8499D23AA36120096ECD0 /* RGChangeArray.m */; };
 		E6FA14A020BEEC1000F097C8 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6FA149F20BEEC1000F097C8 /* CFNetwork.framework */; };
 		E6FA14A120BEEC1800F097C8 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6FA149F20BEEC1000F097C8 /* CFNetwork.framework */; };
 		E6FBE92223121F230055DB36 /* WeakProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = E6FBE91823121F230055DB36 /* WeakProxy.m */; };
@@ -207,8 +219,15 @@
 		E6640CF0231BD17100142AE3 /* RGImagePickerConfig+RGSetting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RGImagePickerConfig+RGSetting.h"; sourceTree = "<group>"; };
 		E6640CF1231BD17100142AE3 /* RGImagePickerConfig+RGSetting.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "RGImagePickerConfig+RGSetting.m"; sourceTree = "<group>"; };
 		E671495620B50971009070D0 /* corver1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = corver1.jpg; sourceTree = "<group>"; };
+		E67B56BA235AB188007EFA99 /* RGSocketIOManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGSocketIOManager.h; sourceTree = "<group>"; };
+		E67B56BB235AB188007EFA99 /* RGSocketIOManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RGSocketIOManager.m; sourceTree = "<group>"; };
+		E68028EA2361ABBE0016E161 /* CTTestViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTTestViewController.h; sourceTree = "<group>"; };
+		E68028EB2361ABBE0016E161 /* CTTestViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTTestViewController.m; sourceTree = "<group>"; };
+		E68028EC2361ABBE0016E161 /* CTTestViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = CTTestViewController.xib; sourceTree = "<group>"; };
 		E684BCF220A6FD3900C3E973 /* camp07.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = camp07.gif; sourceTree = "<group>"; };
 		E684BCF520A7009F00C3E973 /* yuru_camp_login.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = yuru_camp_login.gif; sourceTree = "<group>"; };
+		E685A6D5236092FC0069D24B /* SceneDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
+		E685A6D6236092FC0069D24B /* SceneDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 		E6A2D52C2318AFF9003908A5 /* CTBubbleImageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTBubbleImageView.h; sourceTree = "<group>"; };
 		E6A2D52D2318AFF9003908A5 /* CTBubbleImageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTBubbleImageView.m; sourceTree = "<group>"; };
 		E6AA7B7F230FE7C9002CB741 /* RGRealmManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGRealmManager.h; sourceTree = "<group>"; };
@@ -225,6 +244,8 @@
 		E6B7F47C20944FA900918BC8 /* UIView+PanGestureHelp.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+PanGestureHelp.m"; sourceTree = "<group>"; };
 		E6B7F4892096869800918BC8 /* CTMusicButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTMusicButton.h; sourceTree = "<group>"; };
 		E6B7F48A2096869800918BC8 /* CTMusicButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTMusicButton.m; sourceTree = "<group>"; };
+		E6D216D6239DF3E100C5028D /* YYFPSLabel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YYFPSLabel.h; sourceTree = "<group>"; };
+		E6D216D7239DF3E100C5028D /* YYFPSLabel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YYFPSLabel.m; sourceTree = "<group>"; };
 		E6D3BAC422F2DE6600A6E595 /* CTChatIconConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CTChatIconConfig.h; sourceTree = "<group>"; };
 		E6D3BAC522F2DE6600A6E595 /* CTChatIconConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CTChatIconConfig.m; sourceTree = "<group>"; };
 		E6D3BADA22F3F0D400A6E595 /* [Moozzi2] Yuru Camp - 05 (BD 1920x1080 x.264 Flac)-0002.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "[Moozzi2] Yuru Camp - 05 (BD 1920x1080 x.264 Flac)-0002.png"; sourceTree = "<group>"; };
@@ -232,6 +253,8 @@
 		E6D3BAE022F40DA600A6E595 /* 8bit.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 8bit.jpg; sourceTree = "<group>"; };
 		E6D3BAE322F4123300A6E595 /* 8bit2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 8bit2.jpg; sourceTree = "<group>"; };
 		E6E05AD6209C358C00C54A24 /* chatBg_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = chatBg_1.jpg; sourceTree = "<group>"; };
+		E6E8499C23AA36120096ECD0 /* RGChangeArray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RGChangeArray.h; sourceTree = "<group>"; };
+		E6E8499D23AA36120096ECD0 /* RGChangeArray.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RGChangeArray.m; sourceTree = "<group>"; };
 		E6FA149F20BEEC1000F097C8 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		E6FBE91823121F230055DB36 /* WeakProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WeakProxy.m; sourceTree = "<group>"; };
 		E6FBE91923121F230055DB36 /* JYWaveView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JYWaveView.h; sourceTree = "<group>"; };
@@ -320,6 +343,8 @@
 				6BD7664120850841003FD599 /* Resource */,
 				6BD7662B208504E3003FD599 /* AppDelegate.h */,
 				6BD7662C208504E3003FD599 /* AppDelegate.m */,
+				E685A6D5236092FC0069D24B /* SceneDelegate.h */,
+				E685A6D6236092FC0069D24B /* SceneDelegate.m */,
 				6BD7662E208504E3003FD599 /* ViewController.h */,
 				6BD7662F208504E3003FD599 /* ViewController.m */,
 				6BD76631208504E3003FD599 /* Main.storyboard */,
@@ -456,9 +481,12 @@
 		9E72766D208A36B500FE9454 /* Base */ = {
 			isa = PBXGroup;
 			children = (
+				E67B56B9235AB165007EFA99 /* SocketIO */,
 				E6AA7B7E230FE78E002CB741 /* RGRealm */,
 				E6035A19209BF9AF00A6C6CA /* UIView */,
 				9E72763D20889E7700FE9454 /* UILabel */,
+				E67B56BA235AB188007EFA99 /* RGSocketIOManager.h */,
+				E67B56BB235AB188007EFA99 /* RGSocketIOManager.m */,
 			);
 			path = Base;
 			sourceTree = "<group>";
@@ -468,6 +496,8 @@
 			children = (
 				E6035A15209BF9AB00A6C6CA /* RGBubbleView.h */,
 				E6035A16209BF9AB00A6C6CA /* RGBubbleView.m */,
+				E6D216D6239DF3E100C5028D /* YYFPSLabel.h */,
+				E6D216D7239DF3E100C5028D /* YYFPSLabel.m */,
 			);
 			path = UIView;
 			sourceTree = "<group>";
@@ -479,6 +509,9 @@
 				E618C39D20A5EE4D0072B6F8 /* CTLoginViewController.m */,
 				E6AA7B8D2310CA92002CB741 /* RGLoginManager.h */,
 				E6AA7B8E2310CA92002CB741 /* RGLoginManager.m */,
+				E68028EA2361ABBE0016E161 /* CTTestViewController.h */,
+				E68028EB2361ABBE0016E161 /* CTTestViewController.m */,
+				E68028EC2361ABBE0016E161 /* CTTestViewController.xib */,
 			);
 			path = Login;
 			sourceTree = "<group>";
@@ -509,6 +542,13 @@
 			path = File;
 			sourceTree = "<group>";
 		};
+		E67B56B9235AB165007EFA99 /* SocketIO */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = SocketIO;
+			sourceTree = "<group>";
+		};
 		E6AA7B7E230FE78E002CB741 /* RGRealm */ = {
 			isa = PBXGroup;
 			children = (
@@ -525,6 +565,8 @@
 				E6AA7B8523109DD3002CB741 /* RGMessageViewModel.m */,
 				E6640CF0231BD17100142AE3 /* RGImagePickerConfig+RGSetting.h */,
 				E6640CF1231BD17100142AE3 /* RGImagePickerConfig+RGSetting.m */,
+				E6E8499C23AA36120096ECD0 /* RGChangeArray.h */,
+				E6E8499D23AA36120096ECD0 /* RGChangeArray.m */,
 			);
 			path = ViewModel;
 			sourceTree = "<group>";
@@ -705,6 +747,7 @@
 				E6FBE9482312D31E0055DB36 /* webVC-safari@3x.png in Resources */,
 				6BD76633208504E3003FD599 /* Main.storyboard in Resources */,
 				E6D3BADE22F40B0000A6E595 /* fire.gif in Resources */,
+				E68028EF2361ABBE0016E161 /* CTTestViewController.xib in Resources */,
 				E6FBE9462312D31E0055DB36 /* webVC-safari@2x.png in Resources */,
 				E671495720B50971009070D0 /* corver1.jpg in Resources */,
 			);
@@ -736,6 +779,7 @@
 				E6FBE9492312D31E0055DB36 /* webVC-safari@3x.png in Resources */,
 				E671495820B50971009070D0 /* corver1.jpg in Resources */,
 				E6D3BADF22F40B0000A6E595 /* fire.gif in Resources */,
+				E68028F02361ABBE0016E161 /* CTTestViewController.xib in Resources */,
 				E6FBE9472312D31E0055DB36 /* webVC-safari@2x.png in Resources */,
 				E657C83E21897F3C007DE710 /* miziha.JPG in Resources */,
 			);
@@ -756,10 +800,15 @@
 				"${BUILT_PRODUCTS_DIR}/FLAnimatedImageView+RGWrapper/FLAnimatedImageView_RGWrapper.framework",
 				"${BUILT_PRODUCTS_DIR}/RGImageGallery/RGImageGallery.framework",
 				"${BUILT_PRODUCTS_DIR}/RGImagePicker/RGImagePicker.framework",
+				"${BUILT_PRODUCTS_DIR}/RGObserver/RGObserver.framework",
+				"${BUILT_PRODUCTS_DIR}/RGRunTime/RGRunTime.framework",
 				"${BUILT_PRODUCTS_DIR}/RGScrollLayoutCache/RGScrollLayoutCache.framework",
 				"${BUILT_PRODUCTS_DIR}/RGUIKit/RGUIKit.framework",
 				"${BUILT_PRODUCTS_DIR}/Realm/Realm.framework",
 				"${BUILT_PRODUCTS_DIR}/SDWebImage/SDWebImage.framework",
+				"${BUILT_PRODUCTS_DIR}/Socket.IO-Client-Swift/SocketIO.framework",
+				"${BUILT_PRODUCTS_DIR}/Starscream/Starscream.framework",
+				"${BUILT_PRODUCTS_DIR}/YYText/YYText.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
@@ -768,10 +817,15 @@
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/FLAnimatedImageView_RGWrapper.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGImageGallery.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGImagePicker.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGObserver.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGRunTime.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGScrollLayoutCache.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGUIKit.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Realm.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SDWebImage.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SocketIO.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Starscream.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/YYText.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -812,10 +866,15 @@
 				"${BUILT_PRODUCTS_DIR}/FLAnimatedImageView+RGWrapper/FLAnimatedImageView_RGWrapper.framework",
 				"${BUILT_PRODUCTS_DIR}/RGImageGallery/RGImageGallery.framework",
 				"${BUILT_PRODUCTS_DIR}/RGImagePicker/RGImagePicker.framework",
+				"${BUILT_PRODUCTS_DIR}/RGObserver/RGObserver.framework",
+				"${BUILT_PRODUCTS_DIR}/RGRunTime/RGRunTime.framework",
 				"${BUILT_PRODUCTS_DIR}/RGScrollLayoutCache/RGScrollLayoutCache.framework",
 				"${BUILT_PRODUCTS_DIR}/RGUIKit/RGUIKit.framework",
 				"${BUILT_PRODUCTS_DIR}/Realm/Realm.framework",
 				"${BUILT_PRODUCTS_DIR}/SDWebImage/SDWebImage.framework",
+				"${BUILT_PRODUCTS_DIR}/Socket.IO-Client-Swift/SocketIO.framework",
+				"${BUILT_PRODUCTS_DIR}/Starscream/Starscream.framework",
+				"${BUILT_PRODUCTS_DIR}/YYText/YYText.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
@@ -824,10 +883,15 @@
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/FLAnimatedImageView_RGWrapper.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGImageGallery.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGImagePicker.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGObserver.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGRunTime.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGScrollLayoutCache.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RGUIKit.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Realm.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SDWebImage.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SocketIO.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Starscream.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/YYText.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -864,7 +928,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				E6B7F45F2093DE2B00918BC8 /* CTCameraView.m in Sources */,
+				E685A6D7236092FD0069D24B /* SceneDelegate.m in Sources */,
 				6BD76630208504E3003FD599 /* ViewController.m in Sources */,
+				E67B56BC235AB188007EFA99 /* RGSocketIOManager.m in Sources */,
 				E6B7F47D20944FA900918BC8 /* UIView+PanGestureHelp.m in Sources */,
 				E6D3BAC622F2DE6600A6E595 /* CTChatIconConfig.m in Sources */,
 				E657C832218954CD007DE710 /* CTChatListTableViewController.m in Sources */,
@@ -877,7 +943,9 @@
 				E6035A17209BF9AB00A6C6CA /* RGBubbleView.m in Sources */,
 				6BD7663B208504E3003FD599 /* main.m in Sources */,
 				E6AA7B81230FE7C9002CB741 /* RGRealmManager.m in Sources */,
+				E68028ED2361ABBE0016E161 /* CTTestViewController.m in Sources */,
 				E6640CF2231BD17100142AE3 /* RGImagePickerConfig+RGSetting.m in Sources */,
+				E6D216D8239DF3E100C5028D /* YYFPSLabel.m in Sources */,
 				6BD7662D208504E3003FD599 /* AppDelegate.m in Sources */,
 				9E72764B2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765520896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
@@ -886,6 +954,7 @@
 				E618C39E20A5EE4D0072B6F8 /* CTLoginViewController.m in Sources */,
 				E6312BB420A28C670090054C /* CTUserConfig.m in Sources */,
 				9E727675208C13BF00FE9454 /* CTChatInputView.m in Sources */,
+				E6E8499E23AA36120096ECD0 /* RGChangeArray.m in Sources */,
 				9E72767D208DBE7D00FE9454 /* CTStubbornView.m in Sources */,
 				E64713532096EC1700A304BC /* UIViewController+DragBarItem.m in Sources */,
 				E6FBE92C2312B10C0055DB36 /* CTImageClassifyTableViewController.m in Sources */,
@@ -903,7 +972,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				E6B7F4602093DE2B00918BC8 /* CTCameraView.m in Sources */,
+				E685A6D8236092FD0069D24B /* SceneDelegate.m in Sources */,
 				6BD7669E20850E11003FD599 /* ViewController.m in Sources */,
+				E67B56BD235AB188007EFA99 /* RGSocketIOManager.m in Sources */,
 				E657C83B21895C98007DE710 /* CTChatListTableViewController.m in Sources */,
 				E6D3BAC722F2DE6600A6E595 /* CTChatIconConfig.m in Sources */,
 				E6B7F47E20944FA900918BC8 /* UIView+PanGestureHelp.m in Sources */,
@@ -916,7 +987,9 @@
 				E6035A18209BF9AB00A6C6CA /* RGBubbleView.m in Sources */,
 				6BD766A420850E11003FD599 /* main.m in Sources */,
 				E6AA7B82230FE7C9002CB741 /* RGRealmManager.m in Sources */,
+				E68028EE2361ABBE0016E161 /* CTTestViewController.m in Sources */,
 				E6640CF3231BD17100142AE3 /* RGImagePickerConfig+RGSetting.m in Sources */,
+				E6D216D9239DF3E100C5028D /* YYFPSLabel.m in Sources */,
 				6BD766A520850E11003FD599 /* AppDelegate.m in Sources */,
 				9E72764C2088FE2A00FE9454 /* CTChatTableViewCell.m in Sources */,
 				9E72765620896B9C00FE9454 /* CTChatBubbleLabel.m in Sources */,
@@ -925,6 +998,7 @@
 				E618C39F20A5EE4D0072B6F8 /* CTLoginViewController.m in Sources */,
 				E6312BB520A28C670090054C /* CTUserConfig.m in Sources */,
 				9E727676208C13BF00FE9454 /* CTChatInputView.m in Sources */,
+				E6E8499F23AA36120096ECD0 /* RGChangeArray.m in Sources */,
 				9E72767E208DBE7D00FE9454 /* CTStubbornView.m in Sources */,
 				E64713542096EC1700A304BC /* UIViewController+DragBarItem.m in Sources */,
 				E6FBE92D2312B10C0055DB36 /* CTImageClassifyTableViewController.m in Sources */,
@@ -1128,7 +1202,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 59Q4A65TJN;
+				DEVELOPMENT_TEAM = 56545Q3LP9;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/CampTalk/3rd/FBSocketRocket",
@@ -1151,7 +1225,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 59Q4A65TJN;
+				DEVELOPMENT_TEAM = 56545Q3LP9;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/CampTalk/3rd/FBSocketRocket",

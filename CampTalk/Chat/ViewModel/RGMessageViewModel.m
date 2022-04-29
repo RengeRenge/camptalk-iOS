@@ -15,7 +15,11 @@
 
 @implementation RGMessageViewModel
 
-+ (void)configCell:(UITableViewCell *)aCell withMessage:(RGMessage *)message async:(BOOL)async {
++ (void)configCell:(UITableViewCell *)aCell
+       withMessage:(RGMessage *)message
+     showTimeLabel:(BOOL)showTimeLabel
+         darkColor:(BOOL)darkColor
+             async:(BOOL)async {
     if (![aCell isKindOfClass:CTChatTableViewCell.class]) {
         return;
     }
@@ -38,6 +42,25 @@
         [cell.thumbWapper.imageView rg_cancelSetImagePath];
         [self loadTextWithCell:cell withMessage:message];
     }
+    
+    if (showTimeLabel) {
+        NSDate *date = [NSDate dateWithTimeIntervalSince1970:message.sendTime/1000];
+        NSCalendar *cal = [NSCalendar currentCalendar];
+        NSString *format = nil;
+        if ([cal isDateInToday:date]) {
+            format = @"HH:mm";
+        } else if ([cal components:NSCalendarUnitYear fromDate:date].year == [cal components:NSCalendarUnitYear fromDate:[NSDate dateWithTimeIntervalSinceNow:0]].year) {
+            format = @"MM-dd HH:mm";
+        } else {
+            format = @"yyyy-MM-dd HH:mm";
+        }
+        cell.timeLabel.text = [date rg_stringWithDateFormat:format];
+        cell.timeLabel.hidden = NO;
+        cell.timeLabel.textColor = darkColor ? UIColor.whiteColor : UIColor.blackColor;
+    } else {
+        cell.timeLabel.hidden = YES;
+    }
+    
     [cell setNeedsLayout];
 }
 

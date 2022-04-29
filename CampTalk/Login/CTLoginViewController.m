@@ -11,6 +11,7 @@
 #import "AFNetworking.h"
 
 #import <RGUIKit/RGUIKit.h>
+#import "RGSocketIOManager.h"
 
 @interface CTLoginViewController () <RGInputCellDelegate>
 

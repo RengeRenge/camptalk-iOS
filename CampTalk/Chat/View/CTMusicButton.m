@@ -16,17 +16,11 @@ NSString *CTMusicAnimationKey = @"CTMusicAnimationKey";
 
 @property (nonatomic, assign) CFTimeInterval startTime;
 
+@property (nonatomic, strong) NSArray *runloopModes;
+
 @end
 
 @implementation CTMusicButton
-
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect {
-    // Drawing code
-}
-*/
 
 + (instancetype)new {
     return [[CTMusicButton alloc] init];
@@ -44,6 +38,13 @@ NSString *CTMusicAnimationKey = @"CTMusicAnimationKey";
         [self addSubview:music];
     }
     return self;
+}
+
+- (NSArray *)runloopModes {
+    if (!_runloopModes) {
+        _runloopModes = @[NSDefaultRunLoopMode];
+    }
+    return _runloopModes;
 }
 
 - (void)layoutSubviews {
@@ -69,6 +70,7 @@ NSString *CTMusicAnimationKey = @"CTMusicAnimationKey";
 }
 
 - (void)sizeToFit {
+    [super sizeToFit];
     [self updateButtonFrame:^(UIButton *music) {
         [music sizeToFit];
         CGRect frame = self.frame;
@@ -94,10 +96,12 @@ NSString *CTMusicAnimationKey = @"CTMusicAnimationKey";
 }
 
 - (void)didMoveToSuperview {
+    [super didMoveToSuperview];
     [self delayStarAnimationIfNeed];
 }
 
 - (void)didMoveToWindow {
+    [super didMoveToWindow];
     [self delayStarAnimationIfNeed];
 }
 
@@ -130,7 +134,7 @@ NSString *CTMusicAnimationKey = @"CTMusicAnimationKey";
     animation.fillMode = kCAFillModeForwards;
     animation.repeatCount = 0;
     animation.delegate = self;
-    animation.removedOnCompletion = NO;
+    animation.removedOnCompletion = YES;
     
     _isAnimating = YES;
     [_musicButton.layer addAnimation:animation forKey:CTMusicAnimationKey];
@@ -172,7 +176,7 @@ NSString *CTMusicAnimationKey = @"CTMusicAnimationKey";
 
 - (void)delayStarAnimationIfNeed {
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(starAnimationIfNeed) object:nil];
-    [self performSelector:@selector(starAnimationIfNeed) withObject:nil afterDelay:0.2f inModes:@[NSRunLoopCommonModes]];
+    [self performSelector:@selector(starAnimationIfNeed) withObject:nil afterDelay:0.3f inModes:self.runloopModes];
 }
 
 - (void)animationDidStart:(CAAnimation *)anim {

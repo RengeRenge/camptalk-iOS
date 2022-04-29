@@ -11,21 +11,28 @@
 #import "CTChatTableViewController.h"
 #import "CTChatListTableViewController.h"
 #import "CTLoginViewController.h"
+#import "CTTestViewController.h"
 
 #import <RGUIKit/RGUIKit.h>
+#import "YYFPSLabel.h"
+#import "RGSocketIOManager.h"
 
-@interface ViewController ()
+@interface ViewController () <RGSocketIOManagerDelegate>
 
 @property (nonatomic, strong) AVAudioPlayer *player;
 @property (weak, nonatomic) IBOutlet UIImageView *corverImageView;
 @property (weak, nonatomic) IBOutlet UIImageView *corverImageBgView;
 
+@property (strong, nonatomic) UIWindow *fpsWindow;
 @end
 
 @implementation ViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
+    [[RGSocketIOManager shared] addDelegate:self];
+    
     // Do any additional setup after loading the view, typically from a nib.
     
     self.rg_navigationController.barBackgroundStyle = RGNavigationBackgroundStyleShadow;
@@ -58,6 +65,17 @@
                                      style:UIBarButtonItemStylePlain
                                     target:self
                                     action:@selector(login:)];
+    [self presentViewController:[CTTestViewController new] animated:YES completion:nil];
+    
+    YYFPSLabel *label = [[YYFPSLabel alloc] init];
+    RGWindow *window = [RGWindow windowWithViewController:self];
+    [window setAddtionViewWillLayout:^(UIViewController * _Nonnull viewController, CGRect bounds) {
+        RGLayout.shared.targetNext(label, bounds)
+        .leading(10)
+        .top(viewController.rg_layoutTopY + 44)
+        .apply();
+    }];
+    [window showWithAddtionView:label animation:nil completion:nil];
 }
 
 - (void)linJiang:(id)sender {
@@ -77,11 +95,20 @@
 - (void)login:(id)sender {
     RGNavigationController *ngv = [RGNavigationController navigationWithRoot:[[CTLoginViewController alloc] initWithStyle:UITableViewStylePlain] style:RGNavigationBackgroundStyleAllTranslucent];
     ngv.tintColor = UIColor.blackColor;
-    [self presentViewController:ngv animated:YES completion:nil];
+    if (@available(iOS 13.0, *)) {
+        ngv.modalInPresentation = YES;
+    }
+    [self rg_presentViewController:ngv animated:YES dismissOther:nil completion:nil];
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
     return UIStatusBarStyleLightContent;
+}
+
+#pragma mark - RGSocketIOManagerDelegate
+
+- (void)socketIOManager:(RGSocketIOManager *)manager on:(NSString *)event json:(id)json {
+    [RGToastView showWithInfo:[json description] duration:3 percentY:0.7 viewController:self];
 }
 
 @end

@@ -28,6 +28,8 @@ extern NSString *const CTChatTableViewCellId;
 
 @property (weak, nonatomic) IBOutlet CTChatBubbleLabel *chatBubbleLabel;
 
+@property (weak, nonatomic) IBOutlet UILabel *timeLabel;
+
 @property (copy, nonatomic) NSString *cellId;
 
 @property (nonatomic, weak) id <CTChatTableViewCellActionDelegate> delegate;
@@ -43,10 +45,10 @@ extern NSString *const CTChatTableViewCellId;
 
 + (void)registerForTableView:(UITableView *)tableView;
 
-+ (CGFloat)heightWithText:(NSString *)string tableView:(UITableView *)tableView;
-+ (CGFloat)estimatedHeightWithText:(NSString *)string tableView:(UITableView *)tableView;
++ (CGFloat)heightWithText:(NSString *)string width:(CGFloat)width;
++ (CGFloat)estimatedHeightWithText:(NSString *)string width:(CGFloat)width;
 
-+ (CGFloat)heightWithThumbSize:(CGSize)thumbSize tableView:(UITableView *)tableView;
++ (CGFloat)heightWithThumbSize:(CGSize)thumbSize width:(CGFloat)width;
 
 - (void)lookMe:(void(^)(BOOL flag))completion;
 - (void)doAnimateOnLoadImageFinishIfNeed;

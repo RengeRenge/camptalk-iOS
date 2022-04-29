@@ -2,12 +2,14 @@
 # platform :ios, '9.0'
 
 abstract_target 'CommonPod' do
-#  pod 'RGUIKit', :path => '../../pro/RGUIKit'
-  pod 'RGUIKit'
-#  pod 'RGImagePicker', :path => '../../pro/RGImagePicker'
-  pod 'RGImagePicker'
-#  pod 'RGScrollLayoutCache', :path => '../../pro/RGScrollLayoutCache'
-  pod 'RGScrollLayoutCache'
+  pod 'RGUIKit', :path => '../../pro/RGUIKit'
+  pod 'YYText'
+#  pod 'RGUIKit'
+  pod 'RGImagePicker', :path => '../../pro/RGImagePicker'
+#  pod 'RGImageGallery', :path => '../../pro/RGImageGallery'
+#  pod 'RGImagePicker'
+  pod 'RGScrollLayoutCache', :path => '../../pro/RGScrollLayoutCache'
+#  pod 'RGScrollLayoutCache'
 
   pod 'AFNetworking'
   pod 'Realm/Headers'
@@ -15,6 +17,7 @@ abstract_target 'CommonPod' do
   pod 'SDWebImage'
 #  pod 'FLAnimatedImage'
   pod 'FLAnimatedImageView+RGWrapper'
+  pod 'Socket.IO-Client-Swift'
   
   target 'CampTalk' do
     # Comment the next line if you don't want to use dynamic frameworks

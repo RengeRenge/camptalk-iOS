@@ -385,6 +385,10 @@ static CGFloat kSendButtonSide = 50.f;
             [UIView animateWithDuration:0.3 animations:^{
                 icon.transform = CGAffineTransformMakeScale(1.2, 1.2);
             }];
+            if ([self.delegate respondsToSelector:@selector(chatInputView:willDrag:)]) {
+                CTChatInputViewToolBarItem *item = [self _itemWithIcon:icon];
+                [self.delegate chatInputView:self willDrag:item];
+            }
             break;
         }
         case UIGestureRecognizerStateChanged: {
@@ -395,13 +399,7 @@ static CGFloat kSendButtonSide = 50.f;
         default: {
             _ignoreToolBarLayout = NO;
             
-            __block CTChatInputViewToolBarItem *item = nil;
-            [self.toolBarItems enumerateObjectsUsingBlock:^(CTChatInputViewToolBarItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                if (icon == obj.icon) {
-                    item = obj;
-                    *stop = YES;
-                }
-            }];
+            CTChatInputViewToolBarItem *item = [self _itemWithIcon:icon];
             
             if (!item) {
                 return;
@@ -443,6 +441,17 @@ static CGFloat kSendButtonSide = 50.f;
     }
 }
 
+- (CTChatInputViewToolBarItem *)_itemWithIcon:(UIView *)icon {
+    __block CTChatInputViewToolBarItem *item = nil;
+    [self.toolBarItems enumerateObjectsUsingBlock:^(CTChatInputViewToolBarItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (icon == obj.icon) {
+            item = obj;
+            *stop = YES;
+        }
+    }];
+    return item;
+}
+
 - (CGRect)toolBarFrame {
     if (self.toolBarItems.count) {
         
@@ -478,7 +487,7 @@ static CGFloat kSendButtonSide = 50.f;
 }
 
 - (void)updateNormalTintColorWithBackgroundView:(UIView *)view frame:(CGRect)rect {
-    UIImage *image = [UIImage rg_convertViewToImage:view rect:rect];
+    UIImage *image = [view rg_convertToImageInRect:rect];
     [self updateNormalTintColorWithBackgroundImage:image];
 }
 

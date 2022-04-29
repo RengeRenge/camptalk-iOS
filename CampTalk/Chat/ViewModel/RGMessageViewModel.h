@@ -15,7 +15,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RGMessageViewModel : NSObject
 
-+ (void)configCell:(UITableViewCell *)aCell withMessage:(RGMessage *)message async:(BOOL)async;
++ (void)configCell:(UITableViewCell *)aCell
+       withMessage:(RGMessage *)message
+     showTimeLabel:(BOOL)showTimeLabel
+         darkColor:(BOOL)darkColor
+             async:(BOOL)async;
 
 @end
 

@@ -53,7 +53,7 @@ typedef enum : NSUInteger {
     oneCtr.popoverPresentationController.sourceView = sender;
     oneCtr.popoverPresentationController.sourceRect = sender.bounds;
     oneCtr.popoverPresentationController.permittedArrowDirections = UIPopoverArrowDirectionUp|UIPopoverArrowDirectionDown;
-    [[self rg_topViewController] presentViewController:oneCtr animated:YES completion:^{
+    [[self rg_topViewControllerByWindow:sender.window] presentViewController:oneCtr animated:YES completion:^{
         
     }];
 }

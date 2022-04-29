@@ -19,7 +19,7 @@
 
 - (void)awakeFromNib {
     [super awakeFromNib];
-    self.backgroundView.backgroundColor = [UIColor whiteColor];
+//    self.backgroundView.backgroundColor = [UIColor whiteColor];
 }
 
 - (UIImageView *)imageView {

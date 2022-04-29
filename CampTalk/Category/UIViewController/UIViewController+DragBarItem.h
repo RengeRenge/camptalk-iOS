@@ -25,6 +25,8 @@
 - (NSArray <NSNumber *> *)rightDragBarItemIds;
 
 
+- (void)dragItem:(UIView *)icon willDrag:(NSInteger)itemId;
+
 /**
  override and do some animate
  */
@@ -36,6 +38,8 @@
 - (BOOL)dragItemShouldRemove:(UIView *)icon endDrag:(NSInteger)itemId;
 
 - (void)dragItemDidDragRemove:(UIView *)icon didDrag:(NSInteger)itemId;
+
+- (void)dragItemWillDragAdd:(UIView *)icon didDrag:(NSInteger)itemId;
 - (void)dragItemDidDragAdd:(UIView *)icon didDrag:(NSInteger)itemId;
 
 @end

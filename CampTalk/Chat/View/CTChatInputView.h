@@ -68,6 +68,8 @@ extern CGFloat const CTChatInputToolBarHeight;
 
 - (void)contentSizeDidChange:(CTChatInputView *)chatInputView size:(CGSize)size;
 
+- (void)chatInputView:(CTChatInputView *)chatInputView willDrag:(CTChatInputViewToolBarItem *)item;
+
 - (void)chatInputView:(CTChatInputView *)chatInputView willRemoveItem:(CTChatInputViewToolBarItem *)item syncAnimations:(void(^)(void))syncAnimations;
 
 - (void)chatInputView:(CTChatInputView *)chatInputView didAddItem:(CTChatInputViewToolBarItem *)item;

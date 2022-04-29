@@ -14,6 +14,8 @@
 
 @optional
 
+- (void)cameraView:(CTCameraView *)cameraView willDragButton:(UIButton *)cameraButton;
+
 - (void)cameraView:(CTCameraView *)cameraView didDragButton:(UIButton *)cameraButton;
 
 - (void)cameraView:(CTCameraView *)cameraView endDragButton:(UIButton *)cameraButton layoutBlock:(void(^)(BOOL recover))layout;

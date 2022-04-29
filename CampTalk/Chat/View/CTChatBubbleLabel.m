@@ -38,7 +38,7 @@ static UIFont *_chatBubbleLabelFont;
     
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wunguarded-availability"
-    _chatBubbleLabelFont = [UIFont systemFontOfSize:16.f weight:UIFontWeightThin];
+    _chatBubbleLabelFont = [UIFont systemFontOfSize:16.f weight:UIFontWeightRegular];
     #pragma clang diagnostic pop
 }
 
@@ -123,6 +123,11 @@ static UIFont *_chatBubbleLabelFont;
     if (_bubbleRightToLeft) {
         [self.label rg_setFrameToFitRTL];
     }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self configBubbleView];
 }
 
 - (void)sizeToFit {

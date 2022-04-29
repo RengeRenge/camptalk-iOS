@@ -73,6 +73,8 @@
         
     }];
     
+    [self dragItemWillDragAdd:icon didDrag:icon.tag];
+    
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [UIView animateWithDuration:0.6f animations:^{
             icon.frame = [placeHolder convertRect:placeHolder.bounds toView:icon.superview];
@@ -160,6 +162,7 @@
             [UIView animateWithDuration:0.3 animations:^{
                 icon.transform = CGAffineTransformMakeScale(1.2, 1.2);
             }];
+            [self dragItem:icon willDrag:icon.tag];
             break;
         }
         case UIGestureRecognizerStateChanged: {
@@ -203,12 +206,20 @@
     }
 }
 
+- (void)dragItem:(UIView *)icon willDrag:(NSInteger)itemId {
+    
+}
+
 - (void)dragItem:(UIView *)icon didDrag:(NSInteger)itemId {
     
 }
 
 - (BOOL)dragItemShouldRemove:(UIView *)icon endDrag:(NSInteger)itemId {
     return NO;
+}
+
+- (void)dragItemWillDragAdd:(UIView *)icon didDrag:(NSInteger)itemId {
+    
 }
 
 - (void)dragItemDidDragAdd:(UIView *)icon didDrag:(NSInteger)itemId {

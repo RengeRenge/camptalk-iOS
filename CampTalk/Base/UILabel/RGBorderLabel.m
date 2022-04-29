@@ -7,22 +7,23 @@
 //
 
 #import "RGBorderLabel.h"
+#import <RGUIKit/RGUIKit.h>
 
 @implementation RGBorderLabel
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        self.borderColor = [UIColor whiteColor];
-        self.borderWidth = 3.f;
+        self.borderColor = [UIColor rg_systemBackgroundColor];
+        self.borderWidth = 2.5f;
     }
     return self;
 }
 
 - (void)awakeFromNib {
     [super awakeFromNib];
-    self.borderColor = [UIColor whiteColor];
-    self.borderWidth = 3.f;
+    self.borderColor = [UIColor rg_systemBackgroundColor];
+    self.borderWidth = 2.5f;
 }
 
 - (void)setBorderColor:(UIColor *)borderColor {
